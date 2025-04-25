@@ -15,7 +15,7 @@ _Ixmitasti_ es una aplicación móvil y web desarrollada con [Expo](https://expo
 1. Clona el repositorio:
 
    ```bash
-   git clone <URL-del-repo>
+   git clone <(https://github.com/Reyirel/ixmiventas.git)>
    cd ixmitasti
    ```
 
