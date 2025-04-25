@@ -23,6 +23,8 @@ if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
+const isWeb = Platform.OS === 'web';
+
 // Definimos colores para mantener consistencia
 const COLORS = {
   primary: '#FFFFFF',
@@ -108,7 +110,10 @@ export default function Negocios() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { width } = useWindowDimensions();
-  
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(30)).current;
+
   // Determinar si es pantalla de escritorio (más de 768px generalmente se considera tablet/desktop)
   const isDesktop = width >= 768;
   const numColumns = isDesktop ? 3 : 1;
