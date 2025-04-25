@@ -1,10 +1,5 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-<<<<<<< HEAD
-import { 
-  View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator,
-  StyleSheet, Animated, Dimensions, RefreshControl, Platform
-=======
 import {
   View,
   Text,
@@ -18,27 +13,15 @@ import {
   Platform,
   StyleSheet,
   useWindowDimensions
->>>>>>> luis
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 
-<<<<<<< HEAD
-const { width } = Dimensions.get('window');
-
-// Helper para detectar si estamos en web
-const isWeb = Platform.OS === 'web';
-=======
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
-
-const AnimatedItem = ({ item, index, onPress, isDesktop }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.9)).current;
->>>>>>> luis
 
 // Definimos colores para mantener consistencia
 const COLORS = {
@@ -51,20 +34,19 @@ const COLORS = {
 };
 
 // Componente separado para cada item de negocio
-const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
-  const itemAnimation = useRef(new Animated.Value(50)).current;
-  const itemOpacity = useRef(new Animated.Value(0)).current;
-  
-  useEffect(() => {
-    // Animación secuencial con retraso basado en posición
+const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+
+  React.useEffect(() => {
     Animated.parallel([
-      Animated.timing(itemAnimation, {
-        toValue: 0,
+      Animated.timing(opacity, {
+        toValue: 1,
         duration: 400,
         delay: index * 100,
         useNativeDriver: true
       }),
-      Animated.timing(itemOpacity, {
+      Animated.timing(scale, {
         toValue: 1,
         duration: 400,
         delay: index * 100,
@@ -72,40 +54,22 @@ const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
       })
     ]).start();
   }, []);
-<<<<<<< HEAD
-  
-  return (
-    <Animated.View
-      style={[
-        styles.itemContainer,
-        isWeb && styles.webItemContainer,
-        {
-          opacity: itemOpacity,
-          transform: [{ translateY: itemAnimation }]
-=======
-
-  const shortDesc = item.descripcion
-    ? item.descripcion.length > 60
-      ? item.descripcion.slice(0, 60) + '...'
-      : item.descripcion
-    : '';
 
   return (
     <Animated.View
       style={[
         styles.card,
-        { 
-          opacity, 
-          transform: [{ scale }], 
+        {
+          opacity,
+          transform: [{ scale }],
           marginBottom: 12,
           flex: isDesktop ? 1 : undefined,
           marginHorizontal: isDesktop ? 6 : 0,
->>>>>>> luis
         }
       ]}
     >
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <Pressable
+        android_ripple={{ color: COLORS.lightGray }}
         onPress={onPress}
         style={styles.card}
       >
@@ -116,24 +80,24 @@ const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
             <Ionicons name="business-outline" size={40} color={COLORS.burgundy} />
           </View>
         )}
-        
+
         <View style={styles.cardContent}>
           <Text style={styles.title}>{item.nombre}</Text>
           <Text numberOfLines={2} style={styles.description}>{item.descripcion}</Text>
-          
+
           <View style={styles.footer}>
             <View style={styles.locationContainer}>
               <Ionicons name="location" size={14} color={COLORS.burgundy} />
               <Text style={styles.location}>{item.ubicacion}</Text>
             </View>
-            
+
             <View style={styles.viewButton}>
               <Text style={styles.viewButtonText}>Ver</Text>
               <Ionicons name="chevron-forward" size={14} color={COLORS.gold} />
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 });
@@ -143,16 +107,11 @@ export default function Negocios() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-<<<<<<< HEAD
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(50)).current;
-=======
   const { width } = useWindowDimensions();
   
   // Determinar si es pantalla de escritorio (más de 768px generalmente se considera tablet/desktop)
   const isDesktop = width >= 768;
   const numColumns = isDesktop ? 3 : 1;
->>>>>>> luis
 
   const fetchNegocios = async () => {
     setLoading(true);
@@ -162,15 +121,9 @@ export default function Negocios() {
       .eq('aprobado', true)
       .order('created_at', { ascending: false });
 
-<<<<<<< HEAD
-    if (error) {
-      console.error('Error al cargar negocios:', error.message);
-    } else {
-=======
     if (error) console.error('Error al cargar negocios:', error.message);
     else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
->>>>>>> luis
       setNegocios(data || []);
       
       // Animación de entrada
@@ -200,117 +153,12 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
-<<<<<<< HEAD
-  // En web usamos un grid con 3 columnas
-  const renderItem = ({ item, index }) => (
-    <NegocioItem 
-      item={item} 
-      index={index} 
-      onPress={() => router.push(`/negocios/${item.id}`)}
-      isWeb={isWeb}
-    />
-  );
-
-  const renderHeader = () => (
-    <Animated.View 
-      style={[
-        styles.header, 
-        {opacity: fadeAnim, transform: [{translateY: translateY}]}
-      ]}
-    >
-      <View style={styles.titleContainer}>
-        <Ionicons name="storefront" size={28} color={COLORS.burgundy} />
-        <Text style={styles.headerTitle}>Negocios Disponibles</Text>
-      </View>
-      <Text style={styles.subtitle}>Encuentra los mejores establecimientos locales</Text>
-    </Animated.View>
-  );
-
-  // Barra de navegación
-  const renderNavbar = () => (
-    <View style={styles.navbar}>
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => router.push('/')}
-      >
-        <Ionicons name="home-outline" size={22} color={COLORS.burgundy} />
-        <Text style={styles.navButtonText}>Inicio</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.navButton}
-        onPress={() => router.push('/auth/login')}
-      >
-        <Ionicons name="log-in-outline" size={22} color={COLORS.burgundy} />
-        <Text style={styles.navButtonText}>Login</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // Para web, implementamos un grid personalizado
-  const renderWebGrid = () => {
-    if (!isWeb) return null;
-    
-    // Organizamos los negocios en filas de 3 columnas
-=======
   // Renderizar los elementos en filas para vista de escritorio
   const renderDesktopContent = () => {
->>>>>>> luis
     const rows = [];
     for (let i = 0; i < negocios.length; i += 3) {
       const rowItems = negocios.slice(i, i + 3);
       rows.push(
-<<<<<<< HEAD
-        <View key={i} style={styles.webRow}>
-          {rowItems.map((item, idx) => (
-            <NegocioItem
-              key={item.id}
-              item={item}
-              index={i + idx}
-              onPress={() => router.push(`/negocios/${item.id}`)}
-              isWeb={true}
-            />
-          ))}
-        </View>
-      );
-    }
-    
-    return (
-      <Animated.ScrollView
-        contentContainerStyle={styles.webGridContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.burgundy, COLORS.gold]}
-            tintColor={COLORS.burgundy}
-          />
-        }
-      >
-        {renderHeader()}
-        {rows}
-        {negocios.length === 0 && !loading && (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="alert-circle-outline" size={60} color={COLORS.gray} />
-            <Text style={styles.emptyText}>No hay negocios disponibles</Text>
-          </View>
-        )}
-      </Animated.ScrollView>
-    );
-  };
-
-  // Renderizado condicional basado en la plataforma
-  return (
-    <View style={styles.container}>
-      {renderNavbar()}
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.burgundy} />
-          <Text style={styles.loadingText}>Cargando negocios...</Text>
-        </View>
-      ) : isWeb ? (
-        renderWebGrid()
-=======
         <View key={`row-${i}`} style={styles.desktopRow}>
           {rowItems.map((item, index) => (
             <AnimatedItem
@@ -340,32 +188,18 @@ export default function Negocios() {
         <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
           {renderDesktopContent()}
         </Animated.ScrollView>
->>>>>>> luis
       ) : (
         <Animated.FlatList
           data={negocios}
           keyExtractor={(item) => item.id}
-<<<<<<< HEAD
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderHeader}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.burgundy, COLORS.gold]}
-              tintColor={COLORS.burgundy}
-=======
           renderItem={({ item, index }) => (
             <AnimatedItem
               item={item}
               index={index}
               onPress={() => router.push(`/negocios/${item.id}`)}
               isDesktop={false}
->>>>>>> luis
             />
-          }
+          )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="alert-circle-outline" size={60} color={COLORS.gray} />
@@ -379,42 +213,6 @@ export default function Negocios() {
 }
 
 const styles = StyleSheet.create({
-<<<<<<< HEAD
-  // Estilos originales
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: COLORS.primary,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginLeft: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginLeft: 38,
-    marginBottom: 10,
-  },
-  listContainer: {
-    padding: 15,
-    paddingTop: 5,
-  },
-  itemContainer: {
-    marginBottom: 15,
-=======
   container: { 
     flex: 1, 
     padding: 20, 
@@ -424,7 +222,6 @@ const styles = StyleSheet.create({
     fontSize: 24, 
     fontWeight: 'bold', 
     marginBottom: 16 
->>>>>>> luis
   },
   card: {
     backgroundColor: COLORS.primary,
@@ -562,8 +359,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
-<<<<<<< HEAD
-=======
   pressable: { 
     overflow: 'hidden', 
     borderRadius: 12 
@@ -599,5 +394,4 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 12,
   }
->>>>>>> luis
 });
