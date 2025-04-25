@@ -1,18 +1,44 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+<<<<<<< HEAD
 import { 
   View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator,
   StyleSheet, Animated, Dimensions, RefreshControl, Platform
+=======
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  Pressable,
+  ActivityIndicator,
+  Animated,
+  LayoutAnimation,
+  UIManager,
+  Platform,
+  StyleSheet,
+  useWindowDimensions
+>>>>>>> luis
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 
+<<<<<<< HEAD
 const { width } = Dimensions.get('window');
 
 // Helper para detectar si estamos en web
 const isWeb = Platform.OS === 'web';
+=======
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+const AnimatedItem = ({ item, index, onPress, isDesktop }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+>>>>>>> luis
 
 // Definimos colores para mantener consistencia
 const COLORS = {
@@ -46,6 +72,7 @@ const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
       })
     ]).start();
   }, []);
+<<<<<<< HEAD
   
   return (
     <Animated.View
@@ -55,6 +82,25 @@ const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
         {
           opacity: itemOpacity,
           transform: [{ translateY: itemAnimation }]
+=======
+
+  const shortDesc = item.descripcion
+    ? item.descripcion.length > 60
+      ? item.descripcion.slice(0, 60) + '...'
+      : item.descripcion
+    : '';
+
+  return (
+    <Animated.View
+      style={[
+        styles.card,
+        { 
+          opacity, 
+          transform: [{ scale }], 
+          marginBottom: 12,
+          flex: isDesktop ? 1 : undefined,
+          marginHorizontal: isDesktop ? 6 : 0,
+>>>>>>> luis
         }
       ]}
     >
@@ -97,8 +143,16 @@ export default function Negocios() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+<<<<<<< HEAD
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(50)).current;
+=======
+  const { width } = useWindowDimensions();
+  
+  // Determinar si es pantalla de escritorio (más de 768px generalmente se considera tablet/desktop)
+  const isDesktop = width >= 768;
+  const numColumns = isDesktop ? 3 : 1;
+>>>>>>> luis
 
   const fetchNegocios = async () => {
     setLoading(true);
@@ -108,9 +162,15 @@ export default function Negocios() {
       .eq('aprobado', true)
       .order('created_at', { ascending: false });
 
+<<<<<<< HEAD
     if (error) {
       console.error('Error al cargar negocios:', error.message);
     } else {
+=======
+    if (error) console.error('Error al cargar negocios:', error.message);
+    else {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+>>>>>>> luis
       setNegocios(data || []);
       
       // Animación de entrada
@@ -140,6 +200,7 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
+<<<<<<< HEAD
   // En web usamos un grid con 3 columnas
   const renderItem = ({ item, index }) => (
     <NegocioItem 
@@ -190,10 +251,15 @@ export default function Negocios() {
     if (!isWeb) return null;
     
     // Organizamos los negocios en filas de 3 columnas
+=======
+  // Renderizar los elementos en filas para vista de escritorio
+  const renderDesktopContent = () => {
+>>>>>>> luis
     const rows = [];
     for (let i = 0; i < negocios.length; i += 3) {
       const rowItems = negocios.slice(i, i + 3);
       rows.push(
+<<<<<<< HEAD
         <View key={i} style={styles.webRow}>
           {rowItems.map((item, idx) => (
             <NegocioItem
@@ -244,10 +310,42 @@ export default function Negocios() {
         </View>
       ) : isWeb ? (
         renderWebGrid()
+=======
+        <View key={`row-${i}`} style={styles.desktopRow}>
+          {rowItems.map((item, index) => (
+            <AnimatedItem
+              key={item.id}
+              item={item}
+              index={i + index}
+              onPress={() => router.push(`/negocios/${item.id}`)}
+              isDesktop={true}
+            />
+          ))}
+          {/* Agregar elementos vacíos para mantener el alineamiento si la última fila está incompleta */}
+          {rowItems.length < 3 && [...Array(3 - rowItems.length)].map((_, j) => (
+            <View key={`empty-${j}`} style={{ flex: 1, marginHorizontal: 6 }} />
+          ))}
+        </View>
+      );
+    }
+    return rows;
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Negocios disponibles</Text>
+      {loading ? (
+        <ActivityIndicator size="large" />
+      ) : isDesktop ? (
+        <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
+          {renderDesktopContent()}
+        </Animated.ScrollView>
+>>>>>>> luis
       ) : (
         <Animated.FlatList
           data={negocios}
           keyExtractor={(item) => item.id}
+<<<<<<< HEAD
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
@@ -258,6 +356,14 @@ export default function Negocios() {
               onRefresh={onRefresh}
               colors={[COLORS.burgundy, COLORS.gold]}
               tintColor={COLORS.burgundy}
+=======
+          renderItem={({ item, index }) => (
+            <AnimatedItem
+              item={item}
+              index={index}
+              onPress={() => router.push(`/negocios/${item.id}`)}
+              isDesktop={false}
+>>>>>>> luis
             />
           }
           ListEmptyComponent={
@@ -273,6 +379,7 @@ export default function Negocios() {
 }
 
 const styles = StyleSheet.create({
+<<<<<<< HEAD
   // Estilos originales
   container: {
     flex: 1,
@@ -307,6 +414,17 @@ const styles = StyleSheet.create({
   },
   itemContainer: {
     marginBottom: 15,
+=======
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5' 
+  },
+  header: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 16 
+>>>>>>> luis
   },
   card: {
     backgroundColor: COLORS.primary,
@@ -444,4 +562,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
+<<<<<<< HEAD
+=======
+  pressable: { 
+    overflow: 'hidden', 
+    borderRadius: 12 
+  },
+  image: { 
+    height: 150, 
+    width: '100%', 
+    borderTopLeftRadius: 12, 
+    borderTopRightRadius: 12 
+  },
+  title: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginTop: 10, 
+    marginHorizontal: 12 
+  },
+  desc: { 
+    fontSize: 14, 
+    color: '#555', 
+    marginHorizontal: 12, 
+    marginTop: 4, 
+    marginBottom: 12 
+  },
+  location: { 
+    fontSize: 12, 
+    color: 'gray', 
+    margin: 12 
+  },
+  desktopContainer: {
+    paddingBottom: 20,
+  },
+  desktopRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  }
+>>>>>>> luis
 });
