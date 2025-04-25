@@ -11,18 +11,17 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
-  StyleSheet
+  StyleSheet,
+  useWindowDimensions
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 
-// Habilitar LayoutAnimation en Android
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 
-// Componente animado para cada item
-const AnimatedItem = ({ item, index, onPress }) => {
+const AnimatedItem = ({ item, index, onPress, isDesktop }) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
 
@@ -42,7 +41,6 @@ const AnimatedItem = ({ item, index, onPress }) => {
     ]).start();
   }, []);
 
-  // Limitar la descripción a 60 caracteres
   const shortDesc = item.descripcion
     ? item.descripcion.length > 60
       ? item.descripcion.slice(0, 60) + '...'
@@ -53,7 +51,13 @@ const AnimatedItem = ({ item, index, onPress }) => {
     <Animated.View
       style={[
         styles.card,
-        { opacity, transform: [{ scale }], marginBottom: 12 }
+        { 
+          opacity, 
+          transform: [{ scale }], 
+          marginBottom: 12,
+          flex: isDesktop ? 1 : undefined,
+          marginHorizontal: isDesktop ? 6 : 0,
+        }
       ]}
     >
       <Pressable
@@ -79,6 +83,11 @@ export default function Negocios() {
   const [negocios, setNegocios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  
+  // Determinar si es pantalla de escritorio (más de 768px generalmente se considera tablet/desktop)
+  const isDesktop = width >= 768;
+  const numColumns = isDesktop ? 3 : 1;
 
   const fetchNegocios = async () => {
     setLoading(true);
@@ -90,7 +99,6 @@ export default function Negocios() {
 
     if (error) console.error('Error al cargar negocios:', error.message);
     else {
-      // animar layout
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setNegocios(data || []);
     }
@@ -101,11 +109,41 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
+  // Renderizar los elementos en filas para vista de escritorio
+  const renderDesktopContent = () => {
+    const rows = [];
+    for (let i = 0; i < negocios.length; i += 3) {
+      const rowItems = negocios.slice(i, i + 3);
+      rows.push(
+        <View key={`row-${i}`} style={styles.desktopRow}>
+          {rowItems.map((item, index) => (
+            <AnimatedItem
+              key={item.id}
+              item={item}
+              index={i + index}
+              onPress={() => router.push(`/negocios/${item.id}`)}
+              isDesktop={true}
+            />
+          ))}
+          {/* Agregar elementos vacíos para mantener el alineamiento si la última fila está incompleta */}
+          {rowItems.length < 3 && [...Array(3 - rowItems.length)].map((_, j) => (
+            <View key={`empty-${j}`} style={{ flex: 1, marginHorizontal: 6 }} />
+          ))}
+        </View>
+      );
+    }
+    return rows;
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Negocios disponibles</Text>
       {loading ? (
         <ActivityIndicator size="large" />
+      ) : isDesktop ? (
+        <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
+          {renderDesktopContent()}
+        </Animated.ScrollView>
       ) : (
         <Animated.FlatList
           data={negocios}
@@ -115,6 +153,7 @@ export default function Negocios() {
               item={item}
               index={index}
               onPress={() => router.push(`/negocios/${item.id}`)}
+              isDesktop={false}
             />
           )}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -125,8 +164,16 @@ export default function Negocios() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f5f5f5' 
+  },
+  header: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 16 
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -138,9 +185,39 @@ const styles = StyleSheet.create({
     // elevación Android
     elevation: 3
   },
-  pressable: { overflow: 'hidden', borderRadius: 12 },
-  image: { height: 150, width: '100%' , borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-  title: { fontSize: 18, fontWeight: 'bold', marginTop: 10, marginHorizontal: 12 },
-  desc: { fontSize: 14, color: '#555', marginHorizontal: 12, marginTop: 4 },
-  location: { fontSize: 12, color: 'gray', margin: 12 }
+  pressable: { 
+    overflow: 'hidden', 
+    borderRadius: 12 
+  },
+  image: { 
+    height: 150, 
+    width: '100%', 
+    borderTopLeftRadius: 12, 
+    borderTopRightRadius: 12 
+  },
+  title: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginTop: 10, 
+    marginHorizontal: 12 
+  },
+  desc: { 
+    fontSize: 14, 
+    color: '#555', 
+    marginHorizontal: 12, 
+    marginTop: 4, 
+    marginBottom: 12 
+  },
+  location: { 
+    fontSize: 12, 
+    color: 'gray', 
+    margin: 12 
+  },
+  desktopContainer: {
+    paddingBottom: 20,
+  },
+  desktopRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  }
 });
