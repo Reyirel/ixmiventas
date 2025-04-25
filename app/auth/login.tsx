@@ -1,8 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Animated, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,24 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -42,22 +60,26 @@ export default function Login() {
     if (error) {
       Alert.alert('Error', error.message);
     } else if (data?.url) {
-      // Abre el navegador para el flujo OAuth
       await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
-        {/* Columna izquierda: ahora con dos filas */}
+      <Animated.View
+        style={[
+          styles.row,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
         <View style={styles.leftColumn}>
-          {/* Fila superior: solo el título, transparente y sin bordes */}
           <View style={styles.titleRow}>
             <Text style={styles.appTitle}>Compra en Ixmiquilpan </Text>
             <Text style={styles.titulo2}>Tai ha Ntsotk ani</Text>
           </View>
-          {/* Fila inferior: formulario, con bordes redondeados y sombra */}
           <View style={styles.formRow}>
             <Text style={styles.loginTitle}>Iniciar sesión</Text>
             <Text style={styles.subtitle}>Ingresa tus credenciales para continuar</Text>
@@ -91,12 +113,12 @@ export default function Login() {
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
             </TouchableOpacity>
-            <Text style={styles.orText}>O inicia sesión con</Text>
+            <Text style={styles.orText}>- O inicia sesión con -</Text>
             <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
               <View style={styles.googleButtonContent}>
                 <Image
                   source={{
-                    uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+                    uri: 'https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png',
                   }}
                   style={styles.googleIcon}
                 />
@@ -113,7 +135,7 @@ export default function Login() {
         </View>
         {/* Columna derecha: fondo guinda */}
         <View style={styles.rightColumn} />
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -128,7 +150,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     width: '90%',
-    height: "70%",
+    height: "75%",
     backgroundColor: 'transparent',
     gap: 16, // Espacio entre las columnas
   },

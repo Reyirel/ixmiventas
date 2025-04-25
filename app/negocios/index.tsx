@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { 
   View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator,
-  StyleSheet, Animated, Dimensions, RefreshControl
+  StyleSheet, Animated, Dimensions, RefreshControl, Platform
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 
 const { width } = Dimensions.get('window');
+
+// Helper para detectar si estamos en web
+const isWeb = Platform.OS === 'web';
 
 // Definimos colores para mantener consistencia
 const COLORS = {
@@ -22,7 +25,7 @@ const COLORS = {
 };
 
 // Componente separado para cada item de negocio
-const NegocioItem = React.memo(({ item, index, onPress }) => {
+const NegocioItem = React.memo(({ item, index, onPress, isWeb }) => {
   const itemAnimation = useRef(new Animated.Value(50)).current;
   const itemOpacity = useRef(new Animated.Value(0)).current;
   
@@ -48,6 +51,7 @@ const NegocioItem = React.memo(({ item, index, onPress }) => {
     <Animated.View
       style={[
         styles.itemContainer,
+        isWeb && styles.webItemContainer,
         {
           opacity: itemOpacity,
           transform: [{ translateY: itemAnimation }]
@@ -136,12 +140,13 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
-  // Ahora renderItem solo llama al componente NegocioItem
+  // En web usamos un grid con 3 columnas
   const renderItem = ({ item, index }) => (
     <NegocioItem 
       item={item} 
       index={index} 
       onPress={() => router.push(`/negocios/${item.id}`)}
+      isWeb={isWeb}
     />
   );
 
@@ -160,15 +165,87 @@ export default function Negocios() {
     </Animated.View>
   );
 
+  // Barra de navegación
+  const renderNavbar = () => (
+    <View style={styles.navbar}>
+      <TouchableOpacity
+        style={styles.navButton}
+        onPress={() => router.push('/')}
+      >
+        <Ionicons name="home-outline" size={22} color={COLORS.burgundy} />
+        <Text style={styles.navButtonText}>Inicio</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.navButton}
+        onPress={() => router.push('/auth/login')}
+      >
+        <Ionicons name="log-in-outline" size={22} color={COLORS.burgundy} />
+        <Text style={styles.navButtonText}>Login</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Para web, implementamos un grid personalizado
+  const renderWebGrid = () => {
+    if (!isWeb) return null;
+    
+    // Organizamos los negocios en filas de 3 columnas
+    const rows = [];
+    for (let i = 0; i < negocios.length; i += 3) {
+      const rowItems = negocios.slice(i, i + 3);
+      rows.push(
+        <View key={i} style={styles.webRow}>
+          {rowItems.map((item, idx) => (
+            <NegocioItem
+              key={item.id}
+              item={item}
+              index={i + idx}
+              onPress={() => router.push(`/negocios/${item.id}`)}
+              isWeb={true}
+            />
+          ))}
+        </View>
+      );
+    }
+    
+    return (
+      <Animated.ScrollView
+        contentContainerStyle={styles.webGridContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.burgundy, COLORS.gold]}
+            tintColor={COLORS.burgundy}
+          />
+        }
+      >
+        {renderHeader()}
+        {rows}
+        {negocios.length === 0 && !loading && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="alert-circle-outline" size={60} color={COLORS.gray} />
+            <Text style={styles.emptyText}>No hay negocios disponibles</Text>
+          </View>
+        )}
+      </Animated.ScrollView>
+    );
+  };
+
+  // Renderizado condicional basado en la plataforma
   return (
     <View style={styles.container}>
+      {renderNavbar()}
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.burgundy} />
           <Text style={styles.loadingText}>Cargando negocios...</Text>
         </View>
+      ) : isWeb ? (
+        renderWebGrid()
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={negocios}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -196,7 +273,7 @@ export default function Negocios() {
 }
 
 const styles = StyleSheet.create({
-  // Mantener los mismos estilos que ya tenías
+  // Estilos originales
   container: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -240,6 +317,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    height: '100%', // Para asegurar que todas las cards tengan misma altura en web
   },
   image: {
     height: 160,
@@ -257,6 +335,8 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 15,
+    flex: 1, // Para que el contenido se estire y el footer quede abajo
+    justifyContent: 'space-between',
   },
   title: {
     fontSize: 18,
@@ -321,5 +401,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.gray,
     textAlign: 'center',
-  }
+  },
+  
+  // Nuevos estilos para el diseño web en grid
+  webGridContainer: {
+    padding: 15,
+    paddingTop: 5,
+  },
+  webRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 0,
+  },
+  webItemContainer: {
+    width: '32%', // Aproximadamente 1/3 del ancho con algo de espacio entre columnas
+    marginBottom: 15,
+  },
+  navbar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: isWeb ? 20 : 10,
+    paddingBottom: 5,
+    backgroundColor: COLORS.primary,
+    borderBottomWidth: 0.5,
+    borderBottomColor: COLORS.lightGray,
+    gap: 10,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 15,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: COLORS.lightGray,
+  },
+  navButtonText: {
+    marginLeft: 6,
+    color: COLORS.burgundy,
+    fontWeight: '600',
+    fontSize: 15,
+  },
 });
