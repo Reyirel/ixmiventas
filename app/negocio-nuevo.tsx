@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { 
   View, Text, TextInput, Alert, ScrollView, 
   Image, StyleSheet, TouchableOpacity, 
-  Animated, Dimensions, ActivityIndicator, Platform 
+  Animated, Dimensions, ActivityIndicator, Platform, useWindowDimensions
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AntDesign, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -25,13 +25,30 @@ export default function NegocioNuevo() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
-  
+  const [telefono, setTelefono] = useState('');
+  const [horarios, setHorarios] = useState<{ 
+    [dia: string]: { 
+      apertura: { hora: string; minuto: string; ampm: string }, 
+      cierre: { hora: string; minuto: string; ampm: string } 
+    } 
+  }>({
+    lunes:    { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    martes:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    miercoles:{ apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    jueves:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    viernes:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    sabado:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    domingo:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+  });
+
   // Animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const lottieRef = useRef<LottieView>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmallScreen = windowWidth < 600;
 
   useEffect(() => {
     // Animación de entrada
@@ -164,6 +181,8 @@ export default function NegocioNuevo() {
       productos,
       user_id: userId,
       aprobado: false,
+      telefono,
+      horarios, // <-- Agregado aquí, se guarda como JSON
     });
 
     setLoading(false);
@@ -198,32 +217,33 @@ export default function NegocioNuevo() {
 
   return (
     <ScrollView 
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { paddingHorizontal: isSmallScreen ? 0 : 30 }
+      ]}
       showsVerticalScrollIndicator={false}
     >
       <Animated.View style={[
         styles.header, 
         {opacity: fadeAnim, transform: [{translateY: slideAnim}]}
       ]}>
-        <LinearGradient
-          colors={['#fff', '#fff']}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.headerTitle}>Registrar Nuevo Negocio</Text>
-          <Text style={styles.headerSubtitle}>Comparte tu emprendimiento con la comunidad</Text>
-        </LinearGradient>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Mi Emprendimiento</Text>
+          <Text style={styles.headerSubtitle}>Forma parte de nuestra comunidad de negocios locales</Text>
+        </View>
       </Animated.View>
 
       <Animated.View style={[
         styles.card, 
         {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
       ]}>
-        <Text style={styles.sectionTitle}>Información General</Text>
+        <View style={styles.cardHeader}>
+          <MaterialIcons name="business" size={22} color="#8B0000" />
+          <Text style={styles.sectionTitle}>Datos Principales</Text>
+        </View>
         
         <View style={styles.inputContainer}>
-          <MaterialIcons name="business" size={20} color="#000" style={styles.inputIcon} />
+          <MaterialIcons name="storefront" size={20} color="#555" style={styles.inputIcon} />
           <TextInput 
             value={nombre} 
             onChangeText={setNombre} 
@@ -234,7 +254,7 @@ export default function NegocioNuevo() {
         </View>
 
         <View style={styles.inputContainer}>
-          <MaterialIcons name="description" size={20} color="#000" style={styles.inputIcon} />
+          <MaterialIcons name="description" size={20} color="#555" style={styles.inputIcon} />
           <TextInput 
             value={descripcion} 
             onChangeText={setDescripcion} 
@@ -246,85 +266,123 @@ export default function NegocioNuevo() {
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <MaterialIcons name="location-on" size={20} color="#000" style={styles.inputIcon} />
-          <TextInput 
-            value={ubicacion} 
-            onChangeText={setUbicacion} 
-            placeholder="Dirección del negocio" 
-            placeholderTextColor="#AAA"
-            style={styles.input}
-          />
+        <View style={styles.rowContainer}>
+          <View style={[styles.inputContainer, {flex: 1, marginRight: 8}]}>
+            <MaterialIcons name="location-on" size={20} color="#555" style={styles.inputIcon} />
+            <TextInput 
+              value={ubicacion} 
+              onChangeText={setUbicacion} 
+              placeholder="Dirección" 
+              placeholderTextColor="#AAA"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={[styles.inputContainer, {flex: 1, marginLeft: 8}]}>
+            <MaterialIcons name="phone" size={20} color="#555" style={styles.inputIcon} />
+            <TextInput 
+              value={telefono} 
+              onChangeText={setTelefono} 
+              placeholder="Teléfono" 
+              placeholderTextColor="#AAA"
+              style={styles.input}
+              keyboardType="phone-pad"
+            />
+          </View>
         </View>
       </Animated.View>
 
-      <Animated.View style={[
-        styles.card, 
-        {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+      <View style={[
+        styles.twoColumnLayout,
+        isSmallScreen && { flexDirection: 'column' }
       ]}>
-        <Text style={styles.sectionTitle}>Imagen del Negocio</Text>
-        
-        <TouchableOpacity 
-          style={styles.imagePicker} 
-          onPress={seleccionarImagen}
-          activeOpacity={0.7}
-        >
-          {imagenLocal ? (
-            <Image source={{ uri: imagenLocal }} style={styles.previewImage} />
-          ) : (
-            <Animated.View style={{transform: [{rotate: spin}]}}>
-              <View style={styles.imagePickerInner}>
-                <MaterialIcons name="add-photo-alternate" size={40} color="#000" />
-                <Text style={styles.imagePickerText}>Seleccionar imagen</Text>
-              </View>
-            </Animated.View>
-          )}
-        </TouchableOpacity>
-      </Animated.View>
+        <Animated.View style={[
+          styles.card, 
+          styles.columnCard,
+          isSmallScreen && { marginBottom: 15, marginRight: 0, width: '100%' },
+          {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+        ]}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="image" size={22} color="#8B0000" />
+            <Text style={styles.sectionTitle}>Imagen</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.imagePicker} 
+            onPress={seleccionarImagen}
+            activeOpacity={0.7}
+          >
+            {imagenLocal ? (
+              <Image source={{ uri: imagenLocal }} style={styles.previewImage} />
+            ) : (
+              <Animated.View style={{transform: [{rotate: spin}]}}>
+                <View style={styles.imagePickerInner}>
+                  <MaterialIcons name="add-photo-alternate" size={40} color="#8B0000" />
+                  <Text style={styles.imagePickerText}>Seleccionar imagen</Text>
+                </View>
+              </Animated.View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
 
-      <Animated.View style={[
-        styles.card, 
-        {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
-      ]}>
-        <Text style={styles.sectionTitle}>Productos</Text>
-        
-        <View style={styles.inputContainer}>
-          <FontAwesome5 name="shopping-basket" size={18} color="#000" style={styles.inputIcon} />
-          <TextInput 
-            value={productoNombre} 
-            onChangeText={setProductoNombre} 
-            placeholder="Nombre del producto" 
-            placeholderTextColor="#AAA"
-            style={styles.input}
-          />
-        </View>
+        <Animated.View style={[
+          styles.card,
+          styles.columnCard,
+          isSmallScreen && { marginLeft: 0, width: '100%' },
+          {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+        ]}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="shopping-cart" size={22} color="#8B0000" />
+            <Text style={styles.sectionTitle}>Productos</Text>
+          </View>
+          
+          <View style={styles.rowContainer}>
+            <View style={[styles.inputContainer, {flex: 1, marginRight: 8}]}>
+              <FontAwesome5 name="shopping-basket" size={18} color="#555" style={styles.inputIcon} />
+              <TextInput 
+                value={productoNombre} 
+                onChangeText={setProductoNombre} 
+                placeholder="Nombre producto" 
+                placeholderTextColor="#AAA"
+                style={styles.input}
+              />
+            </View>
 
-        <View style={styles.inputContainer}>
-          <FontAwesome5 name="dollar-sign" size={18} color="#000" style={styles.inputIcon} />
-          <TextInput 
-            value={productoPrecio} 
-            onChangeText={setProductoPrecio} 
-            placeholder="Precio" 
-            placeholderTextColor="#AAA"
-            style={styles.input}
-            keyboardType="numeric"
-          />
-        </View>
+            <View style={[styles.inputContainer, {flex: 0.6, marginLeft: 8}]}>
+              <FontAwesome5 name="dollar-sign" size={18} color="#555" style={styles.inputIcon} />
+              <TextInput 
+                value={productoPrecio} 
+                onChangeText={setProductoPrecio} 
+                placeholder="Precio" 
+                placeholderTextColor="#AAA"
+                style={styles.input}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
 
-        <TouchableOpacity 
-          style={styles.addProductButton} 
-          onPress={agregarProducto}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.addProductButtonText}>Agregar producto</Text>
-          <AntDesign name="plus" size={20} color="#FFF" />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.addProductButton} 
+            onPress={agregarProducto}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addProductButtonText}>Agregar producto</Text>
+            <AntDesign name="plus" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
 
-        {/* Referencia para la animación de Lottie */}
-
-        {productos.length > 0 && (
+      {productos.length > 0 && (
+        <Animated.View style={[
+          styles.card, 
+          {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+        ]}>
+          <View style={styles.cardHeader}>
+            <FontAwesome5 name="list" size={20} color="#8B0000" />
+            <Text style={styles.sectionTitle}>Lista de Productos</Text>
+          </View>
+          
           <View style={styles.productList}>
-            <Text style={styles.productListTitle}>Productos agregados:</Text>
             {productos.map((p, idx) => (
               <Animated.View 
                 key={idx} 
@@ -341,11 +399,101 @@ export default function NegocioNuevo() {
               </Animated.View>
             ))}
           </View>
-        )}
+        </Animated.View>
+      )}
+
+      <Animated.View style={[
+        styles.card, 
+        {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+      ]}>
+        <View style={styles.cardHeader}>
+          <MaterialIcons name="access-time" size={22} color="#8B0000" />
+          <Text style={styles.sectionTitle}>Horarios</Text>
+        </View>
+        
+        {Object.keys(horarios).map((dia) => (
+          <View key={dia} style={styles.horarioContainer}>
+            <View style={styles.horarioDayHeader}>
+              <Text style={styles.horarioDayText}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
+            </View>
+            
+            <View style={styles.horarioRow}>
+              <View style={styles.horarioColumn}>
+                <Text style={styles.horarioLabel}>Apertura:</Text>
+                <View style={styles.horarioInputGroup}>
+                  <TextInput
+                    value={horarios[dia].apertura.hora}
+                    onChangeText={text => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, hora: text } }
+                    }))}
+                    placeholder="hh"
+                    keyboardType="numeric"
+                    style={styles.horarioInput}
+                    maxLength={2}
+                  />
+                  <Text style={styles.horarioSeparator}>:</Text>
+                  <TextInput
+                    value={horarios[dia].apertura.minuto}
+                    onChangeText={text => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, minuto: text } }
+                    }))}
+                    placeholder="mm"
+                    keyboardType="numeric"
+                    style={styles.horarioInput}
+                    maxLength={2}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, ampm: prev[dia].apertura.ampm === 'AM' ? 'PM' : 'AM' } }
+                    }))}
+                    style={styles.ampmButton}
+                  >
+                    <Text style={styles.ampmButtonText}>{horarios[dia].apertura.ampm}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.horarioColumn}>
+                <Text style={styles.horarioLabel}>Cierre:</Text>
+                <View style={styles.horarioInputGroup}>
+                  <TextInput
+                    value={horarios[dia].cierre.hora}
+                    onChangeText={text => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, hora: text } }
+                    }))}
+                    placeholder="hh"
+                    keyboardType="numeric"
+                    style={styles.horarioInput}
+                    maxLength={2}
+                  />
+                  <Text style={styles.horarioSeparator}>:</Text>
+                  <TextInput
+                    value={horarios[dia].cierre.minuto}
+                    onChangeText={text => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, minuto: text } }
+                    }))}
+                    placeholder="mm"
+                    keyboardType="numeric"
+                    style={styles.horarioInput}
+                    maxLength={2}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setHorarios(prev => ({
+                      ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, ampm: prev[dia].cierre.ampm === 'AM' ? 'PM' : 'AM' } }
+                    }))}
+                    style={styles.ampmButton}
+                  >
+                    <Text style={styles.ampmButtonText}>{horarios[dia].cierre.ampm}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        ))}
       </Animated.View>
 
       <Animated.View 
-        style={{transform: [{scale: scaleAnim}], marginTop: 20, marginBottom: 40}}
+        style={{transform: [{scale: scaleAnim}], marginVertical: 30}}
       >
         <TouchableOpacity 
           style={styles.submitButton} 
@@ -356,21 +504,16 @@ export default function NegocioNuevo() {
           activeOpacity={0.8}
           disabled={loading}
         >
-          <LinearGradient
-            colors={['#8B0000', '#800000']}
-            style={styles.submitButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
+          <View style={styles.submitButtonContent}>
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <>
-                <Text style={styles.submitButtonText}>Enviar Negocio</Text>
+                <Text style={styles.submitButtonText}>Registrar Negocio</Text>
                 <MaterialIcons name="send" size={20} color="#FFF" />
               </>
             )}
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </Animated.View>
     </ScrollView>
@@ -380,35 +523,30 @@ export default function NegocioNuevo() {
 const styles = StyleSheet.create({
   container: {
     padding: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
+    minHeight: '100%',
   },
   header: {
+    backgroundColor: '#8B0000',
     marginBottom: 20,
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
   },
-  headerGradient: {
+  headerContent: {
     padding: 25,
     paddingTop: Platform.OS === 'ios' ? 60 : 35,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#8B0000',
+    color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 5,
-    textShadowColor: 'transparent',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 0,
+    marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#FFD700',
+    fontSize: 16,
+    color: '#FFFFFFCC',
     textAlign: 'center',
   },
   card: {
@@ -422,14 +560,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8B0000',
+    borderLeftWidth: 0,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  twoColumnLayout: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 15,
+    gap: 15, // Añade espacio entre columnas
+  },
+  columnCard: {
+    flex: 1,
+    marginHorizontal: 0,
+    minWidth: 0,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#000',
+    fontWeight: '700',
+    marginLeft: 10,
+    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -438,7 +598,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFFFFF',
   },
   inputIcon: {
     padding: 10,
@@ -448,6 +608,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: '#333',
+    minWidth: 0,
   },
   textArea: {
     minHeight: 100,
@@ -460,16 +621,20 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderStyle: 'dashed',
     overflow: 'hidden',
+    width: '100%',
+    minWidth: 120,
+    minHeight: 120,
+    alignSelf: 'center',
   },
   imagePickerInner: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FFFFFF',
   },
   imagePickerText: {
     marginTop: 10,
-    color: '#888',
+    color: '#666',
     fontSize: 14,
   },
   previewImage: {
@@ -485,6 +650,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
   },
   addProductButtonText: {
     color: '#FFF',
@@ -492,7 +658,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   productList: {
-    marginTop: 20,
+    marginTop: 0,
   },
   productListTitle: {
     fontSize: 16,
@@ -504,12 +670,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#F8F8F8',
     borderRadius: 8,
     marginBottom: 8,
     padding: 15,
     borderLeftWidth: 3,
-    borderLeftColor: '#D4AF37',
+    borderLeftColor: '#8B0000',
   },
   productInfo: {
     flex: 1,
@@ -526,10 +692,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   productBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#D4AF37',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#8B0000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -538,18 +704,77 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  horarioContainer: {
+    marginBottom: 16,
+    padding: 10,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 8,
+  },
+  horarioDayHeader: {
+    marginBottom: 10,
+  },
+  horarioDayText: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#333',
+  },
+  horarioRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  horarioColumn: {
+    flex: 1,
+  },
+  horarioLabel: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+  },
+  horarioInputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  horarioInput: {
+    width: 40,
+    padding: 8,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 6,
+    textAlign: 'center',
+  },
+  horarioSeparator: {
+    marginHorizontal: 5,
+    fontSize: 18,
+    color: '#333',
+  },
+  ampmButton: {
+    marginLeft: 8,
+    padding: 8,
+    backgroundColor: '#8B0000',
+    borderRadius: 6,
+    minWidth: 45,
+    alignItems: 'center',
+  },
+  ampmButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
   submitButton: {
     marginHorizontal: 15,
     borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#8B0000',
     shadowColor: '#8B0000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+    minWidth: 120,
   },
-  submitButtonGradient: {
-    paddingVertical: 15,
+  submitButtonContent: {
+    paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -557,7 +782,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
     marginRight: 10,
     letterSpacing: 0.5,
   }
