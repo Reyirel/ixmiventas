@@ -120,6 +120,10 @@ export default function NegocioDetalle() {
             {/* Encabezado con calificación */}
             <View style={styles.headerContainer}>
               <Text style={styles.title}>{negocio.nombre}</Text>
+              {/* Mostrar el tipo de negocio */}
+              {negocio.tipo && (
+                <Text style={styles.businessType}>{negocio.tipo}</Text>
+              )}
               <View style={styles.ratingContainer}>
                 {Array(5).fill(0).map((_, i) => (
                   <Ionicons 
@@ -380,6 +384,12 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 8,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  businessType: {
+    fontSize: 16,
+    color: '#FF7D1A',
+    fontWeight: '600',
+    marginBottom: 4,
   },
   ratingContainer: {
     flexDirection: 'row',

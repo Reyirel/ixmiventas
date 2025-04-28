@@ -13,13 +13,9 @@ import {
   Platform,
   StyleSheet,
   useWindowDimensions,
-<<<<<<< HEAD
-  TextInput
-=======
   TextInput,
   TouchableOpacity,
   ScrollView
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -32,7 +28,6 @@ if (Platform.OS === 'android') {
 
 const isWeb = Platform.OS === 'web';
 
-// Definimos colores para mantener consistencia
 const COLORS = {
   primary: '#FFFFFF',
   burgundy: '#800020',
@@ -41,10 +36,25 @@ const COLORS = {
   lightGray: '#F5F5F5',
   gray: '#888888',
   lightBurgundy: '#f0e6e8',
-  darkGold: '#b8941d'
+  darkGold: '#b8941d',
+  background: '#F0F2F5',
+  border: '#E4E6EB'
 };
 
-// Componente de esqueleto para carga
+const CATEGORIAS = [
+  'Restaurante',
+  'Tienda',
+  'Servicios',
+  'Entretenimiento',
+  'Salud',
+  'Tecnología',
+  'Hogar',
+  'Educación',
+  'Ropa',
+  'Supermercado',
+  'Otro'
+];
+
 const SkeletonItem = ({ isDesktop }) => {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
@@ -91,10 +101,9 @@ const SkeletonItem = ({ isDesktop }) => {
   );
 };
 
-// Componente separado para cada item de negocio
 const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
   const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.95)).current;
+  const scale = useRef(new Animated.Value(0.98)).current;
 
   React.useEffect(() => {
     Animated.parallel([
@@ -120,11 +129,7 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
         {
           opacity,
           transform: [{ scale }],
-<<<<<<< HEAD
-          marginBottom: isDesktop ? 15 : 70, // Aún más espacio en móvil
-=======
           marginBottom: 16,
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
           flex: isDesktop ? 1 : undefined,
           marginHorizontal: isDesktop ? 6 : 0,
         }
@@ -155,7 +160,7 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
 
             <TouchableOpacity style={styles.viewButton} onPress={onPress}>
               <Text style={styles.viewButtonText}>Ver detalles</Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.gold} />
+              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -164,14 +169,12 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
   );
 });
 
-// Componente de filtros
 const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
-  const [expanded, setExpanded] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const { width } = useWindowDimensions(); // Añadir esto para detectar tamaño
+  const { width } = useWindowDimensions();
   
   const filters = ['Todos', 'Nombre', 'Descripción', 'Ubicación'];
-  const isMobile = width < 500; // Punto de quiebre para dispositivos muy pequeños
+  const isMobile = width < 500;
   
   const handleSearch = (text) => {
     setSearchText(text);
@@ -181,7 +184,7 @@ const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
   return (
     <View style={styles.filterContainer}>
       <View style={styles.searchBar}>
-        <Ionicons name="search" size={20} color={COLORS.burgundy} />
+        <Ionicons name="search" size={20} color={COLORS.gray} />
         <TextInput
           style={styles.searchInput}
           placeholder={isMobile ? "Buscar..." : "Buscar negocios..."}
@@ -191,47 +194,176 @@ const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
         />
         {searchText.length > 0 && (
           <TouchableOpacity onPress={() => handleSearch('')}>
-            <Ionicons name="close-circle" size={20} color={COLORS.burgundy} />
+            <Ionicons name="close-circle" size={20} color={COLORS.gray} />
           </TouchableOpacity>
         )}
       </View>
       
-      <TouchableOpacity 
-        style={styles.filterButton} 
-        onPress={() => setExpanded(!expanded)}
-      >
-        <Ionicons name="options-outline" size={22} color={COLORS.burgundy} />
-        <Text style={styles.filterButtonText}>Filtros</Text>
-      </TouchableOpacity>
-      
-      {expanded && (
-        <View style={styles.filterOptions}>
-          <Text style={styles.filterTitle}>Buscar por:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChips}>
-            {filters.map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterChip,
-                  activeFilter === filter && styles.activeFilterChip
-                ]}
-                onPress={() => setActiveFilter(filter)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    activeFilter === filter && styles.activeFilterChipText
-                  ]}
-                >
-                  {filter}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <View style={styles.filterTabsContainer}>
+        {filters.map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            style={[
+              styles.filterTab,
+              activeFilter === filter && styles.activeFilterTab
+            ]}
+            onPress={() => setActiveFilter(filter)}
+          >
+            <Text
+              style={[
+                styles.filterTabText,
+                activeFilter === filter && styles.activeFilterTabText
+              ]}
+            >
+              {filter}
+            </Text>
+            {activeFilter === filter && <View style={styles.activeIndicator} />}
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
+};
+
+const CategoriesPanel = ({ activeCategory, setActiveCategory }) => {
+  return (
+    <View style={styles.categoriesPanel}>
+      <View style={styles.categoriesHeader}>
+        <Text style={styles.categoriesPanelTitle}>Categorías</Text>
+      </View>
+      
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <TouchableOpacity 
+          style={[
+            styles.categoryItem, 
+            activeCategory === 'all' && styles.activeCategoryItem
+          ]}
+          onPress={() => setActiveCategory('all')}
+        >
+          <View style={[styles.categoryIcon, { backgroundColor: COLORS.burgundy }]}>
+            <Ionicons name="grid-outline" size={18} color={COLORS.primary} />
+          </View>
+          <Text 
+            style={[
+              styles.categoryText, 
+              activeCategory === 'all' && styles.activeCategoryText
+            ]}
+          >
+            Todos los negocios
+          </Text>
+        </TouchableOpacity>
+        
+        {CATEGORIAS.map((category) => (
+          <TouchableOpacity 
+            key={category} 
+            style={[
+              styles.categoryItem, 
+              activeCategory === category && styles.activeCategoryItem
+            ]}
+            onPress={() => setActiveCategory(category)}
+          >
+            <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(category) }]}>
+              <Ionicons name={getCategoryIcon(category)} size={18} color={COLORS.primary} />
+            </View>
+            <Text 
+              style={[
+                styles.categoryText, 
+                activeCategory === category && styles.activeCategoryText
+              ]}
+            >
+              {category}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const TopRatedPanel = ({ topBusinesses, router }) => {
+  return (
+    <View style={styles.topRatedPanel}>
+      <View style={styles.topRatedHeader}>
+        <Text style={styles.topRatedTitle}>Mejor calificados</Text>
+      </View>
+      
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {topBusinesses.map((business) => (
+          <TouchableOpacity
+            key={business.id}
+            style={styles.topRatedItem}
+            onPress={() => router.push(`/negocios/${business.id}`)}
+          >
+            <View style={styles.topRatedImageContainer}>
+              {business.imagen_url ? (
+                <Image source={{ uri: business.imagen_url }} style={styles.topRatedImage} />
+              ) : (
+                <View style={styles.topRatedPlaceholder}>
+                  <Ionicons name="business-outline" size={16} color={COLORS.burgundy} />
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.topRatedContent}>
+              <Text style={styles.topRatedName} numberOfLines={1}>
+                {business.nombre}
+              </Text>
+              <View style={styles.topRatedRating}>
+                {[...Array(5)].map((_, i) => (
+                  <Ionicons
+                    key={i}
+                    name={i < Math.round(business.calificacion || 0) ? "star" : "star-outline"}
+                    size={12}
+                    color={COLORS.gold}
+                    style={styles.topRatedStar}
+                  />
+                ))}
+                <Text style={styles.topRatedScore}>
+                  {business.calificacion?.toFixed(1) || '0.0'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const getCategoryIcon = (category) => {
+  const icons = {
+    'Restaurante': 'restaurant-outline',
+    'Tienda': 'cart-outline',
+    'Servicios': 'briefcase-outline',
+    'Entretenimiento': 'film-outline',
+    'Salud': 'medical-outline',
+    'Tecnología': 'hardware-chip-outline',
+    'Hogar': 'home-outline',
+    'Educación': 'school-outline',
+    'Ropa': 'shirt-outline',
+    'Supermercado': 'basket-outline',
+    'Otro': 'apps-outline'
+  };
+  
+  return icons[category] || 'apps-outline';
+};
+
+const getCategoryColor = (category) => {
+  const colors = {
+    'Restaurante': '#E91E63',
+    'Tienda': '#2196F3',
+    'Servicios': '#4CAF50',
+    'Entretenimiento': '#9C27B0',
+    'Salud': '#00BCD4',
+    'Tecnología': '#3F51B5',
+    'Hogar': '#FF9800',
+    'Educación': '#607D8B',
+    'Ropa': '#795548',
+    'Supermercado': '#009688',
+    'Otro': '#757575'
+  };
+  
+  return colors[category] || COLORS.burgundy;
 };
 
 export default function Negocios() {
@@ -239,22 +371,37 @@ export default function Negocios() {
   const [filteredNegocios, setFilteredNegocios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-<<<<<<< HEAD
-  const [filtro, setFiltro] = useState('');
-=======
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Todos');
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [categories, setCategories] = useState([]);
+  const [topRatedBusinesses, setTopRatedBusinesses] = useState([]);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
 
-  // Mejorar la detección de tamaños de pantalla
   const isDesktop = width >= 768;
+  const isLargeDesktop = width >= 1200;
   const isMobile = width < 500;
-  const numColumns = isDesktop ? (width > 1200 ? 4 : 3) : 1;
+
+  const extractCategories = (data) => {
+    // Extraemos solo las categorías que están en nuestra lista predefinida
+    const categoriesSet = new Set();
+    data.forEach(item => {
+      if (item.categoria && CATEGORIAS.includes(item.categoria)) {
+        categoriesSet.add(item.categoria);
+      }
+    });
+    return Array.from(categoriesSet);
+  };
+
+  const getTopRatedBusinesses = (data) => {
+    return [...data]
+      .sort((a, b) => (b.calificacion || 0) - (a.calificacion || 0))
+      .slice(0, 5);
+  };
 
   const fetchNegocios = async () => {
     setLoading(true);
@@ -269,6 +416,9 @@ export default function Negocios() {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setNegocios(data || []);
       setFilteredNegocios(data || []);
+      
+      setCategories(extractCategories(data || []));
+      setTopRatedBusinesses(getTopRatedBusinesses(data || []));
       
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -296,51 +446,47 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
-<<<<<<< HEAD
-  // Filtrar negocios por nombre
-  const negociosFiltrados = negocios.filter(n =>
-    n.nombre?.toLowerCase().includes(filtro.toLowerCase())
-  );
-
-  // Renderizar los elementos en filas para vista de escritorio
-  const renderDesktopContent = (filteredNegocios) => {
-=======
-  // Función para filtrar los negocios según la búsqueda y el filtro activo
   const handleSearch = (text) => {
     setSearchQuery(text);
     
-    if (!text.trim()) {
+    if (!text.trim() && activeCategory === 'all') {
       setFilteredNegocios(negocios);
       return;
     }
     
     const lowercasedQuery = text.toLowerCase();
-    let filtered = [];
+    let filtered = negocios;
     
-    switch (activeFilter) {
-      case 'Nombre':
-        filtered = negocios.filter(item => 
-          item.nombre.toLowerCase().includes(lowercasedQuery)
-        );
-        break;
-      case 'Descripción':
-        filtered = negocios.filter(item => 
-          item.descripcion.toLowerCase().includes(lowercasedQuery)
-        );
-        break;
-      case 'Ubicación':
-        filtered = negocios.filter(item => 
-          item.ubicacion.toLowerCase().includes(lowercasedQuery)
-        );
-        break;
-      case 'Todos':
-      default:
-        filtered = negocios.filter(item => 
-          item.nombre.toLowerCase().includes(lowercasedQuery) ||
-          item.descripcion.toLowerCase().includes(lowercasedQuery) ||
-          item.ubicacion.toLowerCase().includes(lowercasedQuery)
-        );
-        break;
+    if (activeCategory !== 'all') {
+      filtered = filtered.filter(item => item.categoria === activeCategory);
+    }
+    
+    if (text.trim()) {
+      switch (activeFilter) {
+        case 'Nombre':
+          filtered = filtered.filter(item => 
+            item.nombre.toLowerCase().includes(lowercasedQuery)
+          );
+          break;
+        case 'Descripción':
+          filtered = filtered.filter(item => 
+            item.descripcion.toLowerCase().includes(lowercasedQuery)
+          );
+          break;
+        case 'Ubicación':
+          filtered = filtered.filter(item => 
+            item.ubicacion.toLowerCase().includes(lowercasedQuery)
+          );
+          break;
+        case 'Todos':
+        default:
+          filtered = filtered.filter(item => 
+            item.nombre.toLowerCase().includes(lowercasedQuery) ||
+            item.descripcion.toLowerCase().includes(lowercasedQuery) ||
+            item.ubicacion.toLowerCase().includes(lowercasedQuery)
+          );
+          break;
+      }
     }
     
     setFilteredNegocios(filtered);
@@ -348,13 +494,12 @@ export default function Negocios() {
 
   useEffect(() => {
     handleSearch(searchQuery);
-  }, [activeFilter, negocios]);
+  }, [activeFilter, activeCategory, negocios]);
 
-  // Renderizar los elementos para el modo escritorio
-  const renderDesktopContent = () => {
+  const renderMainContent = () => {
     if (loading) {
       return (
-        <View style={styles.desktopSkeletonContainer}>
+        <View style={styles.feedContainer}>
           {[...Array(6)].map((_, index) => (
             <SkeletonItem key={`skeleton-${index}`} isDesktop={true} />
           ))}
@@ -362,29 +507,7 @@ export default function Negocios() {
       );
     }
     
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
-    const rows = [];
-    for (let i = 0; i < filteredNegocios.length; i += 3) {
-      const rowItems = filteredNegocios.slice(i, i + 3);
-      rows.push(
-        <View key={`row-${i}`} style={styles.desktopRow}>
-          {rowItems.map((item, index) => (
-            <AnimatedItem
-              key={item.id}
-              item={item}
-              index={i + index}
-              onPress={() => router.push(`/negocios/${item.id}`)}
-              isDesktop={true}
-            />
-          ))}
-          {rowItems.length < 3 && [...Array(3 - rowItems.length)].map((_, j) => (
-            <View key={`empty-${j}`} style={{ flex: 1, marginHorizontal: 6 }} />
-          ))}
-        </View>
-      );
-    }
-    
-    if (rows.length === 0) {
+    if (filteredNegocios.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="search-outline" size={70} color={COLORS.gray} />
@@ -394,59 +517,23 @@ export default function Negocios() {
       );
     }
     
-    return rows;
+    return (
+      <View style={styles.feedContainer}>
+        {filteredNegocios.map((item, index) => (
+          <AnimatedItem
+            key={item.id}
+            item={item}
+            index={index}
+            onPress={() => router.push(`/negocios/${item.id}`)}
+            isDesktop={true}
+          />
+        ))}
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-<<<<<<< HEAD
-      {/* Navbar con título */}
-      <View style={styles.navbar}>
-        <Ionicons name="business" size={28} color={COLORS.burgundy} style={{ marginRight: 10 }} />
-        <Text style={styles.header}>Negocios disponibles</Text>
-        <View style={{ flex: 1 }} />
-        <Pressable
-          style={({ pressed }) => [
-            styles.navButton,
-            pressed && { backgroundColor: COLORS.gold, opacity: 0.85 }
-          ]}
-          onPress={() => router.push('/')}
-        >
-          <Ionicons name="home-outline" size={20} color={COLORS.burgundy} />
-          <Text style={styles.navButtonText}>Menú</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.navButton,
-            pressed && { backgroundColor: COLORS.gold, opacity: 0.85 }
-          ]}
-          onPress={() => router.push('/auth/login')}
-        >
-          <Ionicons name="person-circle-outline" size={20} color={COLORS.burgundy} />
-          <Text style={styles.navButtonText}>Login</Text>
-        </Pressable>
-      </View>
-
-      {/* Filtro */}
-      <TextInput
-        style={styles.filtroInput}
-        placeholder="Buscar negocio..."
-        value={filtro}
-        onChangeText={setFiltro}
-        placeholderTextColor={COLORS.gray}
-      />
-
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : isDesktop ? (
-        <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
-          {/* Usa negociosFiltrados en vez de negocios */}
-          {renderDesktopContent(negociosFiltrados)}
-        </Animated.ScrollView>
-      ) : (
-        <Animated.FlatList
-          data={negociosFiltrados}
-=======
       <Animated.View 
         style={[
           styles.headerContainer, 
@@ -470,7 +557,7 @@ export default function Negocios() {
               
               <TouchableOpacity 
                 style={styles.navButton}
-                onPress={() => router.push('/login')}
+                onPress={() => router.push('/auth/login')}
               >
                 <Ionicons name="log-in-outline" size={18} color={COLORS.burgundy} />
                 {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
@@ -493,18 +580,45 @@ export default function Negocios() {
           ))}
         </View>
       ) : isDesktop ? (
-        <Animated.ScrollView 
-          contentContainerStyle={styles.desktopContainer}
-          style={{ opacity: fadeAnim }}
-        >
-          {renderDesktopContent()}
-        </Animated.ScrollView>
+        <View style={styles.threeColumnLayout}>
+          <Animated.View 
+            style={[
+              styles.leftPanel, 
+              { opacity: fadeAnim }
+            ]}
+          >
+            <CategoriesPanel 
+              activeCategory={activeCategory}
+              setActiveCategory={setActiveCategory}
+            />
+          </Animated.View>
+          
+          <Animated.ScrollView 
+            contentContainerStyle={styles.desktopContainer}
+            style={[{ opacity: fadeAnim }, styles.centerPanel]}
+          >
+            {renderMainContent()}
+          </Animated.ScrollView>
+          
+          {isLargeDesktop && (
+            <Animated.View 
+              style={[
+                styles.rightPanel, 
+                { opacity: fadeAnim }
+              ]}
+            >
+              <TopRatedPanel 
+                topBusinesses={topRatedBusinesses}
+                router={router}
+              />
+            </Animated.View>
+          )}
+        </View>
       ) : (
         <Animated.FlatList
           data={filteredNegocios}
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
           keyExtractor={(item) => item.id}
-          style={{ opacity: fadeAnim }}
+          style={[{ opacity: fadeAnim }, styles.scrollContent]}
           renderItem={({ item, index }) => (
             <AnimatedItem
               item={item}
@@ -532,48 +646,50 @@ export default function Negocios() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#f8f8f8' 
+    backgroundColor: COLORS.background 
   },
   headerContainer: {
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,  // Reducir padding horizontal para móviles
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#eaeaea',
-    elevation: 3,
+    borderBottomColor: COLORS.border,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   headerContent: {
     width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    flexWrap: 'wrap', // Permitir envolver elementos si no caben
+    marginBottom: 12,
+    flexWrap: 'wrap',
   },
   headerTopMobile: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   header: { 
-    fontSize: 28, 
+    fontSize: 24, 
     fontWeight: 'bold',
     color: COLORS.burgundy,
   },
   headerMobile: {
-    fontSize: 24, // Texto más pequeño para móviles
+    fontSize: 22,
   },
   navButtons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   navButtonsMobile: {
-    marginTop: 8, // Espacio adicional en móviles
+    marginTop: 4,
   },
   navButton: {
     flexDirection: 'row',
@@ -581,10 +697,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(128, 0, 32, 0.08)',
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 24,
+    borderRadius: 6,
     marginLeft: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(128, 0, 32, 0.12)',
+    borderWidth: 0,
   },
   navButtonText: {
     fontSize: 14,
@@ -594,34 +709,38 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.primary,
-    borderRadius: 20,
+    borderRadius: 8,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     height: 'auto',
-    minHeight: 280,
-    maxHeight: 350, // Limitar altura máxima
+    minHeight: 200,
+    maxHeight: 350,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: COLORS.border,
+    marginBottom: 12,
+    width: '100%',
+    maxWidth: 730,
+    alignSelf: 'center',
   },
   cardContent: {
-    padding: 16, // Reducir padding para mejor uso del espacio
+    padding: 14,
     flex: 1,
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 18, // Reducir tamaño para evitar desbordamiento
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 6,
     color: COLORS.burgundy,
   },
   description: {
     fontSize: 14,
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: 14,
     lineHeight: 20,
   },
   footer: {
@@ -629,6 +748,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 'auto',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -646,22 +768,41 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.burgundy,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 20,
+    borderRadius: 6,
   },
   viewButtonText: {
     fontSize: 13,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '500',
     marginRight: 4,
   },
+  image: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+    backgroundColor: '#e0e0e0',
+  },
+  placeholderImage: {
+    width: '100%',
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0e6e8',
+  },
   loadingContainer: {
-    padding: 20,
+    padding: 16,
+    backgroundColor: COLORS.background,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 50,
     flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   emptyText: {
     marginTop: 16,
@@ -670,211 +811,90 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     textAlign: 'center',
   },
-<<<<<<< HEAD
-  
-  // Nuevos estilos para el diseño web en grid
-  webGridContainer: {
-    padding: 15,
-    paddingTop: 5,
-  },
-  webRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  webItemContainer: {
-    width: '32%', // Aproximadamente 1/3 del ancho con algo de espacio entre columnas
-    marginBottom: 15,
-  },
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: isWeb ? 20 : 10,
-    paddingBottom: 5,
-    backgroundColor: COLORS.primary,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.lightGray,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
-  navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 15,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    backgroundColor: COLORS.lightGray,
-    borderWidth: 1,
-    borderColor: COLORS.burgundy,
-    shadowColor: COLORS.burgundy,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  navButtonText: {
-    marginLeft: 8,
-    color: COLORS.burgundy,
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.2,
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 18,
-    marginTop: 18,
-    marginBottom: 18,
-    shadowColor: COLORS.burgundy,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.burgundy,
-    textShadowColor: '#d4af3740',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-    letterSpacing: 0.5,
-  },
-  pressable: { 
-    overflow: 'hidden', 
-    borderRadius: 12 
-  },
-  image: { 
-    height: 150, 
-    width: '100%', 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12 
-  },
-  title: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginTop: 10, 
-    marginHorizontal: 12 
-  },
-  desc: { 
-    fontSize: 14, 
-    color: '#555', 
-    marginHorizontal: 12, 
-    marginTop: 4, 
-    marginBottom: 12 
-  },
-  location: { 
-    fontSize: 12, 
-    color: 'gray', 
-    margin: 12 
-=======
   emptySubtext: {
     marginTop: 8,
     fontSize: 14,
     color: COLORS.gray,
     textAlign: 'center',
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
   },
   desktopContainer: {
     padding: 16,
     paddingBottom: 30,
+    alignItems: 'center',
   },
-  desktopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Mejor distribución de espacio
-    flexWrap: 'wrap', // Permitir envolver para tamaños intermedios
-    marginBottom: 16,
+  feedContainer: {
+    width: '100%',
+    maxWidth: 650,
+    alignSelf: 'center',
+  },
+  scrollContent: {
+    backgroundColor: COLORS.background,
   },
   listContainer: {
     padding: 16,
     paddingTop: 10,
+    alignItems: 'center',
   },
-  
-  // Componentes de búsqueda y filtros
   filterContainer: {
-    marginTop: 8,
+    marginBottom: 0,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f5',
-    borderRadius: 16,
-    paddingHorizontal: 12, // Reducir padding
-    paddingVertical: 10,
+    backgroundColor: COLORS.background,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     marginBottom: 12,
-<<<<<<< HEAD
-  },
-  filtroInput: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    marginVertical: 12,
-    color: COLORS.text,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-=======
-    borderWidth: 1,
-    borderColor: '#e8e8e8',
+    borderColor: COLORS.border,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15, // Reducir tamaño de fuente
+    fontSize: 15,
     marginLeft: 8,
     color: COLORS.text,
     padding: 0,
     fontWeight: '400',
   },
-  filterButton: {
+  filterTabsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: 'rgba(128, 0, 32, 0.08)',
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    alignSelf: 'flex-start', // Para que no ocupe todo el ancho
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-  // Mejorar la presentación en modo escritorio
-  desktopContainer: {
-    padding: 16,
-    paddingBottom: 30,
+  filterTab: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    position: 'relative',
+    marginRight: 8,
   },
-  desktopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Mejor distribución de espacio
-    flexWrap: 'wrap', // Permitir envolver para tamaños intermedios
-    marginBottom: 16,
+  activeFilterTab: {
+    borderBottomWidth: 0,
   },
-  listContainer: {
-    padding: 16,
-    paddingTop: 10,
+  filterTabText: {
+    fontSize: 14,
+    color: COLORS.gray,
+    fontWeight: '500',
   },
-  
-  // Estilos para skeleton loading
+  activeFilterTabText: {
+    color: COLORS.burgundy,
+    fontWeight: '600',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: COLORS.burgundy,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
   skeletonImage: {
-    height: 160,
+    height: 200,
     backgroundColor: '#e0e0e0',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   skeletonTitle: {
     height: 20,
@@ -900,14 +920,137 @@ const styles = StyleSheet.create({
   skeletonButton: {
     height: 30,
     backgroundColor: '#e0e0e0',
-    borderRadius: 20,
+    borderRadius: 6,
     width: 100,
   },
-  desktopSkeletonContainer: {
+  threeColumnLayout: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    padding: 20,
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  leftPanel: {
+    width: 260,
+    backgroundColor: COLORS.primary,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
+    paddingTop: 16,
+    display: 'flex',
+  },
+  centerPanel: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  rightPanel: {
+    width: 300,
+    backgroundColor: COLORS.primary,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
+    paddingTop: 16,
+  },
+  categoriesPanel: {
+    flex: 1,
+    padding: 8,
+  },
+  categoriesHeader: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  categoriesPanelTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+    marginBottom: 16,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    borderRadius: 8,
+  },
+  activeCategoryItem: {
+    backgroundColor: COLORS.lightBurgundy,
+  },
+  categoryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryText: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  activeCategoryText: {
+    color: COLORS.burgundy,
+    fontWeight: 'bold',
+  },
+  topRatedPanel: {
+    flex: 1,
+    padding: 8,
+  },
+  topRatedHeader: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  topRatedTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+    marginBottom: 16,
+  },
+  topRatedItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  topRatedImageContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  topRatedImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  topRatedPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.lightBurgundy,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topRatedContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  topRatedName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.burgundy,
+    marginBottom: 4,
+  },
+  topRatedRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topRatedStar: {
+    marginRight: 2,
+  },
+  topRatedScore: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginLeft: 4,
   }
->>>>>>> 31887404d47f8bd8fc4a755b0683755c7ee2851f
 });

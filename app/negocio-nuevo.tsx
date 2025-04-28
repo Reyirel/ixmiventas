@@ -14,6 +14,19 @@ import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 
+// Puedes poner esto en un archivo común o en ambos archivos
+const CATEGORIAS = [
+  'Restaurante',
+  'Tecnología',
+  'Ropa',
+  'Salud',
+  'Educación',
+  'Servicios',
+  'Supermercado',
+  'Entretenimiento',
+  'Otro'
+];
+
 export default function NegocioNuevo() {
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -26,6 +39,9 @@ export default function NegocioNuevo() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [telefono, setTelefono] = useState('');
+  const [tipoNegocio, setTipoNegocio] = useState('');
+  const tiposNegocio = CATEGORIAS;
+
   const [horarios, setHorarios] = useState<{ 
     [dia: string]: { 
       apertura: { hora: string; minuto: string; ampm: string }, 
@@ -152,7 +168,7 @@ export default function NegocioNuevo() {
   };
 
   const handleSubmit = async () => {
-    if (!nombre || !userId) {
+    if (!nombre || !userId || !descripcion || !ubicacion || !telefono || !tipoNegocio) {
       Alert.alert('Faltan datos obligatorios');
       return;
     }
@@ -160,6 +176,15 @@ export default function NegocioNuevo() {
     if (productos.length === 0) {
       Alert.alert('Agrega al menos un producto');
       return;
+    }
+
+    // Validar horarios (ejemplo simple: que todos tengan hora de apertura y cierre)
+    for (const dia of Object.keys(horarios)) {
+      const h = horarios[dia];
+      if (!h.apertura.hora || !h.apertura.minuto || !h.cierre.hora || !h.cierre.minuto) {
+        Alert.alert('Completa los horarios de todos los días');
+        return;
+      }
     }
 
     setLoading(true);
@@ -182,7 +207,8 @@ export default function NegocioNuevo() {
       user_id: userId,
       aprobado: false,
       telefono,
-      horarios, // <-- Agregado aquí, se guarda como JSON
+      horarios,
+      categoria: tipoNegocio, // <-- Cambia 'tipo' por 'categoria'
     });
 
     setLoading(false);
@@ -251,6 +277,37 @@ export default function NegocioNuevo() {
             placeholderTextColor="#AAA"
             style={styles.input}
           />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <MaterialIcons name="category" size={20} color="#555" style={styles.inputIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#AAA', fontSize: 13, marginBottom: 2 }}>Tipo de negocio</Text>
+            <View style={{
+              borderWidth: 0,
+              borderRadius: 6,
+              backgroundColor: '#FFF',
+              overflow: 'hidden'
+            }}>
+              <select
+                value={tipoNegocio}
+                onChange={e => setTipoNegocio(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 10,
+                  fontSize: 16,
+                  color: tipoNegocio ? '#333' : '#AAA',
+                  border: 'none',
+                  background: 'transparent'
+                }}
+              >
+                <option value="" disabled>Selecciona una opción</option>
+                {tiposNegocio.map(tipo => (
+                  <option key={tipo} value={tipo}>{tipo}</option>
+                ))}
+              </select>
+            </View>
+          </View>
         </View>
 
         <View style={styles.inputContainer}>

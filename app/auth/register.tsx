@@ -24,14 +24,13 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [userType, setUserType] = useState('usuario'); // Nuevo estado para el tipo de usuario
   const router = useRouter();
 
-  // Usar useRef para los valores de animación
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   
   useEffect(() => {
-    // Animación de entrada
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -45,7 +44,6 @@ export default function Register() {
       })
     ]).start();
 
-    // Detectar teclado para ajustar el diseño
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow', () => setKeyboardVisible(true)
     );
@@ -84,16 +82,33 @@ export default function Register() {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
+      if (error) throw error;
+
+      if (data && data.user) {
+        const { error: profileError } = await supabase
+          .from('perfiles')
+          .insert([
+            { 
+              user_id: data.user.id, 
+              tipo_usuario: userType,
+              email: email 
+            }
+          ]);
+          
+        if (profileError) throw profileError;
+      }
+
       Alert.alert('Registro exitoso', 'Revisa tu correo para confirmar tu cuenta.');
       router.push('/auth/login');
+      
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo completar el registro');
     }
   };
 
@@ -107,7 +122,6 @@ export default function Register() {
           styles.row,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}>
-          {/* Columna izquierda: fondo guinda con diseño */}
           <Animated.View 
             style={[
               styles.leftColumn,
@@ -123,20 +137,58 @@ export default function Register() {
             <Text style={styles.welcomeSubtext}>Únete a la comunidad de comercios en Ixmiquilpan</Text>
           </Animated.View>
           
-          {/* Columna derecha: formulario */}
           <View style={styles.rightColumn}>
-            {/* Fila superior: título */}
             <View style={styles.titleRow}>
               <Text style={styles.appTitle}>Compra en Ixmiquilpan</Text>
               <Text style={styles.titulo2}>Tai ha Ntsotk ani</Text>
             </View>
             
-            {/* Fila inferior: formulario */}
             <Animated.View 
               style={[styles.formRow, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
             >
               <Text style={styles.registerTitle}>Crear cuenta</Text>
               <Text style={styles.subtitle}>Ingresa tus datos para registrarte</Text>
+              
+              <View style={styles.userTypeContainer}>
+                <Text style={styles.userTypeLabel}>Tipo de cuenta:</Text>
+                <View style={styles.userTypeOptions}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.userTypeButton, 
+                      userType === 'usuario' && styles.userTypeButtonActive
+                    ]}
+                    onPress={() => setUserType('usuario')}
+                  >
+                    <Ionicons 
+                      name="person" 
+                      size={18} 
+                      color={userType === 'usuario' ? '#fff' : '#800020'} 
+                    />
+                    <Text style={[
+                      styles.userTypeText,
+                      userType === 'usuario' && styles.userTypeTextActive
+                    ]}>Usuario</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[
+                      styles.userTypeButton, 
+                      userType === 'negocio' && styles.userTypeButtonActive
+                    ]}
+                    onPress={() => setUserType('negocio')}
+                  >
+                    <Ionicons 
+                      name="business" 
+                      size={18} 
+                      color={userType === 'negocio' ? '#fff' : '#800020'} 
+                    />
+                    <Text style={[
+                      styles.userTypeText,
+                      userType === 'negocio' && styles.userTypeTextActive
+                    ]}>Negocio</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
               
               <View style={styles.inputContainer}>
                 <Ionicons name="mail-outline" size={20} color="#800020" style={styles.inputIcon} />
@@ -431,5 +483,40 @@ const styles = StyleSheet.create({
   loginLink: {
     color: '#800020',
     fontWeight: 'bold',
+  },
+  userTypeContainer: {
+    marginBottom: 20,
+  },
+  userTypeLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
+    marginBottom: 8,
+  },
+  userTypeOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  userTypeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#800020',
+    borderRadius: 8,
+    gap: 6,
+  },
+  userTypeButtonActive: {
+    backgroundColor: '#800020',
+  },
+  userTypeText: {
+    color: '#800020',
+    fontWeight: '500',
+  },
+  userTypeTextActive: {
+    color: '#fff',
   },
 });
