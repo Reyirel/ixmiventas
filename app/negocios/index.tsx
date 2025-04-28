@@ -12,7 +12,10 @@ import {
   UIManager,
   Platform,
   StyleSheet,
-  useWindowDimensions
+  useWindowDimensions,
+  TextInput,
+  TouchableOpacity,
+  ScrollView
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -32,26 +35,75 @@ const COLORS = {
   gold: '#D4AF37',
   text: '#333333',
   lightGray: '#F5F5F5',
-  gray: '#888888'
+  gray: '#888888',
+  lightBurgundy: '#f0e6e8',
+  darkGold: '#b8941d'
+};
+
+// Componente de esqueleto para carga
+const SkeletonItem = ({ isDesktop }) => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: true
+        })
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.card,
+        {
+          opacity: pulseAnim,
+          flex: isDesktop ? 1 : undefined,
+          marginHorizontal: isDesktop ? 6 : 0,
+          marginBottom: 12
+        }
+      ]}
+    >
+      <View style={styles.skeletonImage} />
+      <View style={styles.cardContent}>
+        <View style={styles.skeletonTitle} />
+        <View style={styles.skeletonDesc} />
+        <View style={styles.skeletonDesc} />
+        <View style={styles.footer}>
+          <View style={styles.skeletonLocation} />
+          <View style={styles.skeletonButton} />
+        </View>
+      </View>
+    </Animated.View>
+  );
 };
 
 // Componente separado para cada item de negocio
 const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
   const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.9)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
 
   React.useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 400,
-        delay: index * 100,
+        duration: 500,
+        delay: index * 80,
         useNativeDriver: true
       }),
       Animated.timing(scale, {
         toValue: 1,
-        duration: 400,
-        delay: index * 100,
+        duration: 500,
+        delay: index * 80,
         useNativeDriver: true
       })
     ]).start();
@@ -64,7 +116,7 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
         {
           opacity,
           transform: [{ scale }],
-          marginBottom: 12,
+          marginBottom: 16,
           flex: isDesktop ? 1 : undefined,
           marginHorizontal: isDesktop ? 6 : 0,
         }
@@ -73,7 +125,7 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
       <Pressable
         android_ripple={{ color: COLORS.lightGray }}
         onPress={onPress}
-        style={styles.card}
+        style={styles.cardPressable}
       >
         {item.imagen_url ? (
           <Image source={{ uri: item.imagen_url }} style={styles.image} />
@@ -93,10 +145,10 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
               <Text style={styles.location}>{item.ubicacion}</Text>
             </View>
 
-            <View style={styles.viewButton}>
-              <Text style={styles.viewButtonText}>Ver</Text>
+            <TouchableOpacity style={styles.viewButton} onPress={onPress}>
+              <Text style={styles.viewButtonText}>Ver detalles</Text>
               <Ionicons name="chevron-forward" size={14} color={COLORS.gold} />
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       </Pressable>
@@ -104,19 +156,93 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
   );
 });
 
+// Componente de filtros
+const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const { width } = useWindowDimensions(); // Añadir esto para detectar tamaño
+  
+  const filters = ['Todos', 'Nombre', 'Descripción', 'Ubicación'];
+  const isMobile = width < 500; // Punto de quiebre para dispositivos muy pequeños
+  
+  const handleSearch = (text) => {
+    setSearchText(text);
+    onSearch(text);
+  };
+  
+  return (
+    <View style={styles.filterContainer}>
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={20} color={COLORS.burgundy} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={isMobile ? "Buscar..." : "Buscar negocios..."}
+          placeholderTextColor={COLORS.gray}
+          value={searchText}
+          onChangeText={handleSearch}
+        />
+        {searchText.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')}>
+            <Ionicons name="close-circle" size={20} color={COLORS.burgundy} />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      <TouchableOpacity 
+        style={styles.filterButton} 
+        onPress={() => setExpanded(!expanded)}
+      >
+        <Ionicons name="options-outline" size={22} color={COLORS.burgundy} />
+        <Text style={styles.filterButtonText}>Filtros</Text>
+      </TouchableOpacity>
+      
+      {expanded && (
+        <View style={styles.filterOptions}>
+          <Text style={styles.filterTitle}>Buscar por:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChips}>
+            {filters.map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterChip,
+                  activeFilter === filter && styles.activeFilterChip
+                ]}
+                onPress={() => setActiveFilter(filter)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    activeFilter === filter && styles.activeFilterChipText
+                  ]}
+                >
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function Negocios() {
   const [negocios, setNegocios] = useState<any[]>([]);
+  const [filteredNegocios, setFilteredNegocios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('Todos');
   const router = useRouter();
   const { width } = useWindowDimensions();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(30)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
 
-  // Determinar si es pantalla de escritorio (más de 768px generalmente se considera tablet/desktop)
+  // Mejorar la detección de tamaños de pantalla
   const isDesktop = width >= 768;
-  const numColumns = isDesktop ? 3 : 1;
+  const isMobile = width < 500;
+  const numColumns = isDesktop ? (width > 1200 ? 4 : 3) : 1;
 
   const fetchNegocios = async () => {
     setLoading(true);
@@ -130,8 +256,8 @@ export default function Negocios() {
     else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setNegocios(data || []);
+      setFilteredNegocios(data || []);
       
-      // Animación de entrada
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -158,11 +284,66 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
-  // Renderizar los elementos en filas para vista de escritorio
+  // Función para filtrar los negocios según la búsqueda y el filtro activo
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    
+    if (!text.trim()) {
+      setFilteredNegocios(negocios);
+      return;
+    }
+    
+    const lowercasedQuery = text.toLowerCase();
+    let filtered = [];
+    
+    switch (activeFilter) {
+      case 'Nombre':
+        filtered = negocios.filter(item => 
+          item.nombre.toLowerCase().includes(lowercasedQuery)
+        );
+        break;
+      case 'Descripción':
+        filtered = negocios.filter(item => 
+          item.descripcion.toLowerCase().includes(lowercasedQuery)
+        );
+        break;
+      case 'Ubicación':
+        filtered = negocios.filter(item => 
+          item.ubicacion.toLowerCase().includes(lowercasedQuery)
+        );
+        break;
+      case 'Todos':
+      default:
+        filtered = negocios.filter(item => 
+          item.nombre.toLowerCase().includes(lowercasedQuery) ||
+          item.descripcion.toLowerCase().includes(lowercasedQuery) ||
+          item.ubicacion.toLowerCase().includes(lowercasedQuery)
+        );
+        break;
+    }
+    
+    setFilteredNegocios(filtered);
+  };
+
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [activeFilter, negocios]);
+
+  // Renderizar los elementos para el modo escritorio
   const renderDesktopContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.desktopSkeletonContainer}>
+          {[...Array(6)].map((_, index) => (
+            <SkeletonItem key={`skeleton-${index}`} isDesktop={true} />
+          ))}
+        </View>
+      );
+    }
+    
     const rows = [];
-    for (let i = 0; i < negocios.length; i += 3) {
-      const rowItems = negocios.slice(i, i + 3);
+    for (let i = 0; i < filteredNegocios.length; i += 3) {
+      const rowItems = filteredNegocios.slice(i, i + 3);
       rows.push(
         <View key={`row-${i}`} style={styles.desktopRow}>
           {rowItems.map((item, index) => (
@@ -174,29 +355,85 @@ export default function Negocios() {
               isDesktop={true}
             />
           ))}
-          {/* Agregar elementos vacíos para mantener el alineamiento si la última fila está incompleta */}
           {rowItems.length < 3 && [...Array(3 - rowItems.length)].map((_, j) => (
             <View key={`empty-${j}`} style={{ flex: 1, marginHorizontal: 6 }} />
           ))}
         </View>
       );
     }
+    
+    if (rows.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="search-outline" size={70} color={COLORS.gray} />
+          <Text style={styles.emptyText}>No se encontraron negocios</Text>
+          <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
+        </View>
+      );
+    }
+    
     return rows;
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Negocios disponibles</Text>
-      {loading ? (
-        <ActivityIndicator size="large" />
+      <Animated.View 
+        style={[
+          styles.headerContainer, 
+          { 
+            opacity: fadeAnim,
+            transform: [{ translateY: translateY }]
+          }
+        ]}
+      >
+        <View style={styles.headerContent}>
+          <View style={[styles.headerTop, isMobile && styles.headerTopMobile]}>
+            <Text style={[styles.header, isMobile && styles.headerMobile]}>Negocios</Text>
+            <View style={[styles.navButtons, isMobile && styles.navButtonsMobile]}>
+              <TouchableOpacity 
+                style={styles.navButton}
+                onPress={() => router.push('/')}
+              >
+                <Ionicons name="home-outline" size={18} color={COLORS.burgundy} />
+                {!isMobile && <Text style={styles.navButtonText}>Inicio</Text>}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.navButton}
+                onPress={() => router.push('/login')}
+              >
+                <Ionicons name="log-in-outline" size={18} color={COLORS.burgundy} />
+                {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <FilterBar 
+            onSearch={handleSearch} 
+            activeFilter={activeFilter}
+            setActiveFilter={setActiveFilter}
+          />
+        </View>
+      </Animated.View>
+      
+      {loading && !isDesktop ? (
+        <View style={styles.loadingContainer}>
+          {[...Array(3)].map((_, index) => (
+            <SkeletonItem key={`skeleton-${index}`} isDesktop={false} />
+          ))}
+        </View>
       ) : isDesktop ? (
-        <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
+        <Animated.ScrollView 
+          contentContainerStyle={styles.desktopContainer}
+          style={{ opacity: fadeAnim }}
+        >
           {renderDesktopContent()}
         </Animated.ScrollView>
       ) : (
         <Animated.FlatList
-          data={negocios}
+          data={filteredNegocios}
           keyExtractor={(item) => item.id}
+          style={{ opacity: fadeAnim }}
           renderItem={({ item, index }) => (
             <AnimatedItem
               item={item}
@@ -205,12 +442,16 @@ export default function Negocios() {
               isDesktop={false}
             />
           )}
+          contentContainerStyle={styles.listContainer}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="alert-circle-outline" size={60} color={COLORS.gray} />
-              <Text style={styles.emptyText}>No hay negocios disponibles</Text>
+              <Ionicons name="search-outline" size={70} color={COLORS.gray} />
+              <Text style={styles.emptyText}>No se encontraron negocios</Text>
+              <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
             </View>
           }
+          onRefresh={onRefresh}
+          refreshing={refreshing}
         />
       )}
     </View>
@@ -220,65 +461,108 @@ export default function Negocios() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 20, 
-    backgroundColor: '#f5f5f5' 
+    backgroundColor: '#f8f8f8' 
   },
-  header: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 16 
-  },
-  card: {
+  headerContainer: {
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    overflow: 'hidden',
+    paddingHorizontal: 16,  // Reducir padding horizontal para móviles
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eaeaea',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    height: '100%', // Para asegurar que todas las cards tengan misma altura en web
   },
-  image: {
-    height: 160,
+  headerContent: {
     width: '100%',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
-  placeholderImage: {
-    height: 160,
-    backgroundColor: COLORS.lightGray,
-    justifyContent: 'center',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    marginBottom: 16,
+    flexWrap: 'wrap', // Permitir envolver elementos si no caben
+  },
+  headerTopMobile: {
+    marginBottom: 12,
+  },
+  header: { 
+    fontSize: 28, 
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+  },
+  headerMobile: {
+    fontSize: 24, // Texto más pequeño para móviles
+  },
+  navButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navButtonsMobile: {
+    marginTop: 8, // Espacio adicional en móviles
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128, 0, 32, 0.08)',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 24,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(128, 0, 32, 0.12)',
+  },
+  navButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+    color: COLORS.burgundy,
+  },
+  card: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    height: 'auto',
+    minHeight: 280,
+    maxHeight: 350, // Limitar altura máxima
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   cardContent: {
-    padding: 15,
-    flex: 1, // Para que el contenido se estire y el footer quede abajo
+    padding: 16, // Reducir padding para mejor uso del espacio
+    flex: 1,
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: 18,
+    fontSize: 18, // Reducir tamaño para evitar desbordamiento
     fontWeight: 'bold',
-    marginBottom: 6,
-    color: COLORS.text,
+    marginBottom: 8,
+    color: COLORS.burgundy,
   },
   description: {
     fontSize: 14,
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: 16,
     lineHeight: 20,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 5,
+    marginTop: 'auto',
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   location: {
     fontSize: 13,
@@ -288,115 +572,140 @@ const styles = StyleSheet.create({
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    borderColor: COLORS.burgundy,
-    borderWidth: 0.5,
+    backgroundColor: COLORS.burgundy,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
   },
   viewButtonText: {
-    fontSize: 12,
-    color: COLORS.burgundy,
+    fontSize: 13,
+    color: COLORS.primary,
     fontWeight: '600',
-    marginRight: 3,
+    marginRight: 4,
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: COLORS.burgundy,
+    padding: 20,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 50,
+    flex: 1,
   },
   emptyText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
     color: COLORS.gray,
     textAlign: 'center',
   },
-  
-  // Nuevos estilos para el diseño web en grid
-  webGridContainer: {
-    padding: 15,
-    paddingTop: 5,
-  },
-  webRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  webItemContainer: {
-    width: '32%', // Aproximadamente 1/3 del ancho con algo de espacio entre columnas
-    marginBottom: 15,
-  },
-  navbar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: isWeb ? 20 : 10,
-    paddingBottom: 5,
-    backgroundColor: COLORS.primary,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLORS.lightGray,
-    gap: 10,
-  },
-  navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 15,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: COLORS.lightGray,
-  },
-  navButtonText: {
-    marginLeft: 6,
-    color: COLORS.burgundy,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  pressable: { 
-    overflow: 'hidden', 
-    borderRadius: 12 
-  },
-  image: { 
-    height: 150, 
-    width: '100%', 
-    borderTopLeftRadius: 12, 
-    borderTopRightRadius: 12 
-  },
-  title: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    marginTop: 10, 
-    marginHorizontal: 12 
-  },
-  desc: { 
-    fontSize: 14, 
-    color: '#555', 
-    marginHorizontal: 12, 
-    marginTop: 4, 
-    marginBottom: 12 
-  },
-  location: { 
-    fontSize: 12, 
-    color: 'gray', 
-    margin: 12 
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
   },
   desktopContainer: {
-    paddingBottom: 20,
+    padding: 16,
+    paddingBottom: 30,
   },
   desktopRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between', // Mejor distribución de espacio
+    flexWrap: 'wrap', // Permitir envolver para tamaños intermedios
+    marginBottom: 16,
+  },
+  listContainer: {
+    padding: 16,
+    paddingTop: 10,
+  },
+  
+  // Componentes de búsqueda y filtros
+  filterContainer: {
+    marginTop: 8,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f5',
+    borderRadius: 16,
+    paddingHorizontal: 12, // Reducir padding
+    paddingVertical: 10,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15, // Reducir tamaño de fuente
+    marginLeft: 8,
+    color: COLORS.text,
+    padding: 0,
+    fontWeight: '400',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: 'rgba(128, 0, 32, 0.08)',
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    alignSelf: 'flex-start', // Para que no ocupe todo el ancho
+  },
+  // Mejorar la presentación en modo escritorio
+  desktopContainer: {
+    padding: 16,
+    paddingBottom: 30,
+  },
+  desktopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', // Mejor distribución de espacio
+    flexWrap: 'wrap', // Permitir envolver para tamaños intermedios
+    marginBottom: 16,
+  },
+  listContainer: {
+    padding: 16,
+    paddingTop: 10,
+  },
+  
+  // Estilos para skeleton loading
+  skeletonImage: {
+    height: 160,
+    backgroundColor: '#e0e0e0',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  skeletonTitle: {
+    height: 20,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    marginTop: 8,
+    width: '70%',
+    marginBottom: 12,
+  },
+  skeletonDesc: {
+    height: 14,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    marginBottom: 8,
+    width: '100%',
+  },
+  skeletonLocation: {
+    height: 16,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    width: '40%',
+  },
+  skeletonButton: {
+    height: 30,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 20,
+    width: 100,
+  },
+  desktopSkeletonContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    padding: 20,
   }
 });

@@ -1,16 +1,17 @@
-import { View, Text, Image, StyleSheet, Pressable, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable, ScrollView, useWindowDimensions, SafeAreaView } from 'react-native';
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function HomeScreen() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobileOrTablet = width < 900;
+  const isSmallDevice = width < 380;
 
   const dynamicStyles = StyleSheet.create({
     contentRow: {
-      flex: 3,
       flexDirection: isMobileOrTablet ? 'column' : 'row',
-      padding: 1,
+      padding: isSmallDevice ? 5 : 10,
+      marginBottom: 20,
     },
     imageColumn: {
       flex: 1,
@@ -23,43 +24,49 @@ export default function HomeScreen() {
       flex: 1,
       justifyContent: 'center',
       alignItems: isMobileOrTablet ? 'center' : 'flex-start',
-      padding: 10,
+      padding: isSmallDevice ? 5 : 10,
       width: isMobileOrTablet ? '100%' : undefined,
     },
     mainTitle: {
-      fontSize: isMobileOrTablet ? 32 : 48,
+      fontSize: isSmallDevice ? 24 : (isMobileOrTablet ? 32 : 48),
       fontWeight: 'bold',
       color: 'white',
       marginBottom: 8,
       textAlign: isMobileOrTablet ? 'center' : 'left',
     },
     goldSubtitle: {
-      fontSize: isMobileOrTablet ? 32 : 48,
+      fontSize: isSmallDevice ? 24 : (isMobileOrTablet ? 32 : 48),
       fontWeight: 'bold',
       color: '#E1CB7A',
       marginBottom: 16,
       textAlign: isMobileOrTablet ? 'center' : 'left',
     },
     description: {
-      fontSize: 16,
+      fontSize: isSmallDevice ? 14 : 16,
       color: 'rgba(255, 255, 255, 0.9)',
       marginBottom: 24,
-      lineHeight: 22,
+      lineHeight: isSmallDevice ? 20 : 22,
       textAlign: isMobileOrTablet ? 'center' : 'left',
+      paddingHorizontal: isSmallDevice ? 5 : 0,
     },
     button: {
       backgroundColor: 'white',
       paddingVertical: 10,
-      paddingHorizontal: isMobileOrTablet ? 40 : 100,
+      paddingHorizontal: isSmallDevice ? 30 : (isMobileOrTablet ? 40 : 100),
       borderRadius: 15,
       elevation: 2,
       alignSelf: 'center',
+      marginBottom: 20,
     },
     welcomeImage: {
       width: '100%',
-      height: isMobileOrTablet ? 200 : '80%',
+      height: isSmallDevice ? 150 : (isMobileOrTablet ? 200 : '80%'),
       maxWidth: 350,
       resizeMode: 'contain',
+    },
+    logo: {
+      width: isSmallDevice ? 150 : (isMobileOrTablet ? 200 : 300),
+      height: isSmallDevice ? 150 : (isMobileOrTablet ? 200 : 300),
     },
   });
 
@@ -68,41 +75,43 @@ export default function HomeScreen() {
       colors={['#C24747', '#7a2a2a', '#260909']}
       style={styles.container}
     >
-      {/* Primera fila - Logo centrado */}
-      <View style={styles.logoRow}>
-        <Image
-          source={require('../assets/images/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-      
-      {/* Segunda fila - Imagen y texto con botón */}
-      <View style={dynamicStyles.contentRow}>
-        {/* Columna izquierda - Imagen */}
-        <View style={dynamicStyles.imageColumn}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Primera fila - Logo centrado */}
+        <View style={styles.logoRow}>
           <Image
-            source={require('../assets/images/image1.png')}
-            style={dynamicStyles.welcomeImage}
+            source={require('../assets/images/logo.png')}
+            style={dynamicStyles.logo}
             resizeMode="contain"
           />
         </View>
         
-        {/* Columna derecha - Texto y botón */}
-        <View style={dynamicStyles.textColumn}>
-          <Text style={dynamicStyles.mainTitle}>Compra en Ixmiquilpan</Text>
-          <Text style={dynamicStyles.goldSubtitle}>Tai ha Ntsotk ani</Text>
-          <Text style={dynamicStyles.description}>
-            Explora y apoya los mejores negocios locales de Ixmiquilpan. Conectamos 
-            a comerciantes y clientes para impulsar la economía de nuestra región.
-          </Text>
-          <Link href="/negocios" asChild>
-            <Pressable style={dynamicStyles.button}>
-              <Text style={styles.buttonText}>Iniciar</Text>
-            </Pressable>
-          </Link>
+        {/* Segunda fila - Imagen y texto con botón */}
+        <View style={dynamicStyles.contentRow}>
+          {/* Columna izquierda - Imagen */}
+          <View style={dynamicStyles.imageColumn}>
+            <Image
+              source={require('../assets/images/image1.png')}
+              style={dynamicStyles.welcomeImage}
+              resizeMode="contain"
+            />
+          </View>
+          
+          {/* Columna derecha - Texto y botón */}
+          <View style={dynamicStyles.textColumn}>
+            <Text style={dynamicStyles.mainTitle}>Compra en Ixmiquilpan</Text>
+            <Text style={dynamicStyles.goldSubtitle}>Tai ha Ntsotk ani</Text>
+            <Text style={dynamicStyles.description}>
+              Explora y apoya los mejores negocios locales de Ixmiquilpan. Conectamos 
+              a comerciantes y clientes para impulsar la economía de nuestra región.
+            </Text>
+            <Link href="/negocios" asChild>
+              <Pressable style={dynamicStyles.button}>
+                <Text style={styles.buttonText}>Iniciar</Text>
+              </Pressable>
+            </Link>
+          </View>
         </View>
-      </View>
+      </ScrollView>
 
       {/* Footer con logos alternados */}
       <View style={styles.footer}>
@@ -131,15 +140,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flexGrow: 1,
+  },
   logoRow: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 10,
-  },
-  logo: {
-    width: 300,
-    height: 300,
+    paddingBottom: 10,
   },
   footer: {
     backgroundColor: '#B4A673',
