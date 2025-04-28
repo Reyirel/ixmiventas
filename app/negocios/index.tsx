@@ -12,7 +12,8 @@ import {
   UIManager,
   Platform,
   StyleSheet,
-  useWindowDimensions
+  useWindowDimensions,
+  TextInput
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -64,7 +65,7 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
         {
           opacity,
           transform: [{ scale }],
-          marginBottom: 12,
+          marginBottom: isDesktop ? 15 : 70, // Aún más espacio en móvil
           flex: isDesktop ? 1 : undefined,
           marginHorizontal: isDesktop ? 6 : 0,
         }
@@ -108,6 +109,7 @@ export default function Negocios() {
   const [negocios, setNegocios] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filtro, setFiltro] = useState('');
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -158,11 +160,16 @@ export default function Negocios() {
     fetchNegocios();
   }, []);
 
+  // Filtrar negocios por nombre
+  const negociosFiltrados = negocios.filter(n =>
+    n.nombre?.toLowerCase().includes(filtro.toLowerCase())
+  );
+
   // Renderizar los elementos en filas para vista de escritorio
-  const renderDesktopContent = () => {
+  const renderDesktopContent = (filteredNegocios) => {
     const rows = [];
-    for (let i = 0; i < negocios.length; i += 3) {
-      const rowItems = negocios.slice(i, i + 3);
+    for (let i = 0; i < filteredNegocios.length; i += 3) {
+      const rowItems = filteredNegocios.slice(i, i + 3);
       rows.push(
         <View key={`row-${i}`} style={styles.desktopRow}>
           {rowItems.map((item, index) => (
@@ -186,16 +193,52 @@ export default function Negocios() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Negocios disponibles</Text>
+      {/* Navbar con título */}
+      <View style={styles.navbar}>
+        <Ionicons name="business" size={28} color={COLORS.burgundy} style={{ marginRight: 10 }} />
+        <Text style={styles.header}>Negocios disponibles</Text>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          style={({ pressed }) => [
+            styles.navButton,
+            pressed && { backgroundColor: COLORS.gold, opacity: 0.85 }
+          ]}
+          onPress={() => router.push('/')}
+        >
+          <Ionicons name="home-outline" size={20} color={COLORS.burgundy} />
+          <Text style={styles.navButtonText}>Menú</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.navButton,
+            pressed && { backgroundColor: COLORS.gold, opacity: 0.85 }
+          ]}
+          onPress={() => router.push('/auth/login')}
+        >
+          <Ionicons name="person-circle-outline" size={20} color={COLORS.burgundy} />
+          <Text style={styles.navButtonText}>Login</Text>
+        </Pressable>
+      </View>
+
+      {/* Filtro */}
+      <TextInput
+        style={styles.filtroInput}
+        placeholder="Buscar negocio..."
+        value={filtro}
+        onChangeText={setFiltro}
+        placeholderTextColor={COLORS.gray}
+      />
+
       {loading ? (
         <ActivityIndicator size="large" />
       ) : isDesktop ? (
         <Animated.ScrollView contentContainerStyle={styles.desktopContainer}>
-          {renderDesktopContent()}
+          {/* Usa negociosFiltrados en vez de negocios */}
+          {renderDesktopContent(negociosFiltrados)}
         </Animated.ScrollView>
       ) : (
         <Animated.FlatList
-          data={negocios}
+          data={negociosFiltrados}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
             <AnimatedItem
@@ -348,21 +391,60 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: COLORS.lightGray,
     gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 10,
   },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 15,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
     backgroundColor: COLORS.lightGray,
+    borderWidth: 1,
+    borderColor: COLORS.burgundy,
+    shadowColor: COLORS.burgundy,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   navButtonText: {
-    marginLeft: 6,
+    marginLeft: 8,
     color: COLORS.burgundy,
-    fontWeight: '600',
-    fontSize: 15,
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.2,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 18,
+    marginTop: 18,
+    marginBottom: 18,
+    shadowColor: COLORS.burgundy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+    textShadowColor: '#d4af3740',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+    letterSpacing: 0.5,
   },
   pressable: { 
     overflow: 'hidden', 
@@ -398,5 +480,21 @@ const styles = StyleSheet.create({
   desktopRow: {
     flexDirection: 'row',
     marginBottom: 12,
-  }
+  },
+  filtroInput: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+    marginVertical: 12,
+    color: COLORS.text,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
 });
