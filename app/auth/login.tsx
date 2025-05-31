@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Animated, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { Animated, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,6 +12,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  
+  // Determinar si es una pantalla pequeña (móvil)
+  const isMobile = width < 768;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -44,10 +48,28 @@ export default function Login() {
 
     if (error) {
       Alert.alert('Error', error.message);
-    } else if (!data.session) {
-      Alert.alert('Verifica tu correo', 'Debes confirmar tu cuenta antes de iniciar sesión.');
+      return;
+    }
+
+    // Obtener el perfil del usuario
+    const { data: perfilData, error: perfilError } = await supabase
+      .from('perfiles')
+      .select('tipo_usuario')
+      .eq('user_id', data.user.id)
+      .single();
+
+    if (perfilError || !perfilData) {
+      Alert.alert('Error', 'No se pudo obtener el perfil');
+      return;
+    }
+
+    // Redirigir según el tipo de usuario
+    if (perfilData.tipo_usuario === 'admin') {
+      router.replace('/admin');
+    } else if (perfilData.tipo_usuario === 'negocio') {
+      router.replace('/negocio-nuevo');
     } else {
-      router.push('/negocio-nuevo');
+      router.replace('/negocios');
     }
   };
 
@@ -71,16 +93,32 @@ export default function Login() {
           styles.row,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
+            transform: [{ translateY: slideAnim }],
+            flexDirection: isMobile ? 'column' : 'row',
+            width: isMobile ? '95%' : '90%',
+            height: isMobile ? 'auto' : "75%"
           }
         ]}
       >
-        <View style={styles.leftColumn}>
-          <View style={styles.titleRow}>
-            <Text style={styles.appTitle}>Compra en Ixmiquilpan </Text>
-            <Text style={styles.titulo2}>Tai ha Ntsotk ani</Text>
+        <View style={[
+          styles.leftColumn,
+          isMobile && { width: '100%' }
+        ]}>
+          <View style={[
+            styles.titleRow,
+            isMobile && { paddingHorizontal: 16, paddingTop: 24 }
+          ]}>
+            <Text style={[styles.appTitle, isMobile && { fontSize: 24 }]}>
+              Compra en Ixmiquilpan 
+            </Text>
+            <Text style={[styles.titulo2, isMobile && { fontSize: 22, marginBottom: 20 }]}>
+              Tai ha Ntsotk ani
+            </Text>
           </View>
-          <View style={styles.formRow}>
+          <View style={[
+            styles.formRow,
+            isMobile && { padding: 20 }
+          ]}>
             <Text style={styles.loginTitle}>Iniciar sesión</Text>
             <Text style={styles.subtitle}>Ingresa tus credenciales para continuar</Text>
             <TextInput
@@ -133,8 +171,13 @@ export default function Login() {
             </View>
           </View>
         </View>
-        {/* Columna derecha: fondo guinda */}
-        <View style={styles.rightColumn} />
+        
+        {/* Columna derecha: se oculta o se muestra abajo en móvil */}
+        {isMobile ? (
+          <View style={[styles.rightColumnMobile]} />
+        ) : (
+          <View style={styles.rightColumn} />
+        )}
       </Animated.View>
     </View>
   );
@@ -146,30 +189,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f6f6f6',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   row: {
-    flexDirection: 'row',
-    width: '90%',
-    height: "75%",
-    backgroundColor: 'transparent',
     gap: 16, // Espacio entre las columnas
+    backgroundColor: 'transparent',
   },
   leftColumn: {
     flex: 1,
-    backgroundColor: 'transparent', // ahora transparente
+    backgroundColor: 'transparent',
     padding: 0,
     justifyContent: 'center',
     borderRadius: 20,
   },
   rightColumn: {
     flex: 2,
-    backgroundColor: '#800020', // guinda
+    backgroundColor: '#800020',
     borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+  },
+  rightColumnMobile: {
+    height: 80,
+    backgroundColor: '#800020',
+    borderRadius: 20,
+    marginTop: 16,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   appTitle: {
     fontSize: 28,
@@ -286,7 +339,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 32,
     paddingBottom: 0,
-    // Sin sombra ni bordes
   },
   formRow: {
     backgroundColor: '#fff',

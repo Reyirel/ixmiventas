@@ -10,7 +10,9 @@ import {
   Linking, 
   ActivityIndicator,
   useWindowDimensions,
-  Platform
+  Platform,
+  Alert,
+  TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -19,9 +21,13 @@ import { BlurView } from 'expo-blur';
 
 export default function NegocioDetalle() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [negocio, setNegocio] = useState(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState('');
+  const [comentarios, setComentarios] = useState([]);
   const { width } = useWindowDimensions();
 
   useEffect(() => {
@@ -37,7 +43,33 @@ export default function NegocioDetalle() {
           setNegocio(data);
           setLoading(false);
         });
+
+      // Cargar comentarios
+      supabase
+        .from('calificaciones')
+        .select('valor, comentario, usuario_id')
+        .eq('negocio_id', id)
+        .then(({ data }) => {
+          setComentarios(data || []);
+        });
     }
+
+    // Obtener usuario logueado y su calificación/comentario
+    supabase.auth.getUser().then(async ({ data }) => {
+      setUser(data?.user || null);
+      if (data?.user && id) {
+        const { data: calif } = await supabase
+          .from('calificaciones')
+          .select('valor, comentario')
+          .eq('negocio_id', id)
+          .eq('usuario_id', data.user.id)
+          .single();
+        if (calif) {
+          setUserRating(calif.valor);
+          setUserComment(calif.comentario || '');
+        }
+      }
+    });
   }, [id]);
 
   const handleContactar = () => {
@@ -49,6 +81,92 @@ export default function NegocioDetalle() {
   const handleUbicacion = () => {
     if (negocio?.ubicacion) {
       Linking.openURL(`https://maps.google.com/?q=${negocio.ubicacion}`);
+    }
+  };
+
+  const handleSetRating = async (rating) => {
+    if (!user) return;
+    setUserRating(rating);
+
+    // Upsert calificación
+    const { error } = await supabase
+      .from('calificaciones')
+      .upsert([
+        {
+          negocio_id: id,
+          usuario_id: user.id,
+          valor: rating,
+          comentario: userComment
+        }
+      ], { onConflict: ['negocio_id', 'usuario_id'] });
+
+    if (error) {
+      Alert.alert('Error', 'No se pudo guardar la calificación');
+      return;
+    }
+
+    // Recalcular promedio
+    const { data: calificaciones } = await supabase
+      .from('calificaciones')
+      .select('valor')
+      .eq('negocio_id', id);
+
+    if (calificaciones && calificaciones.length > 0) {
+      const promedio = calificaciones.reduce((acc, curr) => acc + curr.valor, 0) / calificaciones.length;
+      await supabase
+        .from('negocios')
+        .update({ calificacion: promedio })
+        .eq('id', id);
+
+      setNegocio({ ...negocio, calificacion: promedio });
+    }
+
+    // Recargar comentarios
+    const { data: nuevosComentarios } = await supabase
+      .from('calificaciones')
+      .select('valor, comentario, usuario_id')
+      .eq('negocio_id', id);
+    setComentarios(nuevosComentarios || []);
+  };
+
+  const handleSaveComment = async () => {
+    if (!user) return;
+
+    // Asegúrate de que userRating sea un número válido
+    const valor = typeof userRating === 'number' && !isNaN(userRating) ? userRating : 0;
+
+    const { error } = await supabase
+      .from('calificaciones')
+      .upsert([
+        {
+          negocio_id: Number(id), // asegúrate que sea número
+          usuario_id: user.id,
+          valor: valor,
+          comentario: userComment
+        }
+      ], { onConflict: ['negocio_id', 'usuario_id'] });
+
+    if (error) {
+      Alert.alert('Error', 'No se pudo guardar el comentario');
+      console.error(error); // <-- Agrega esto para ver el error exacto en consola
+      return;
+    }
+    Alert.alert('¡Gracias!', 'Tu comentario ha sido guardado.');
+
+    // Recargar comentarios
+    const { data: nuevosComentarios } = await supabase
+      .from('calificaciones')
+      .select('valor, comentario, usuario_id')
+      .eq('negocio_id', id);
+    setComentarios(nuevosComentarios || []);
+  };
+
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Si no hay pantalla anterior, navegar a la página de negocios
+      router.replace('/negocios');
     }
   };
 
@@ -68,7 +186,7 @@ export default function NegocioDetalle() {
         <Text style={styles.errorText}>No se pudo cargar la información</Text>
         <TouchableOpacity 
           style={styles.backButton} 
-          onPress={() => router.back()}
+          onPress={handleGoBack}
         >
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
@@ -93,7 +211,7 @@ export default function NegocioDetalle() {
           <View style={styles.headerBar}>
             <TouchableOpacity 
               style={styles.backIconButton} 
-              onPress={() => router.back()}
+              onPress={handleGoBack}
             >
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
@@ -126,18 +244,57 @@ export default function NegocioDetalle() {
               )}
               <View style={styles.ratingContainer}>
                 {Array(5).fill(0).map((_, i) => (
-                  <Ionicons 
-                    key={i} 
-                    name={i < (negocio.calificacion || 4) ? "star" : "star-outline"} 
-                    size={20} 
-                    color="#FFD700" 
+                  <Ionicons
+                    key={i}
+                    name={i < (user ? userRating : (negocio.calificacion || 4)) ? "star" : "star-outline"}
+                    size={20}
+                    color="#FFD700"
                     style={styles.starIcon}
+                    onPress={user ? () => handleSetRating(i + 1) : undefined}
+                    style={[
+                      styles.starIcon,
+                      user && Platform.OS === 'web' ? { cursor: 'pointer' } : {}
+                    ]}
                   />
                 ))}
                 <Text style={styles.ratingText}>
-                  {negocio.calificacion?.toFixed(1) || '4.0'} 
+                  {negocio.calificacion?.toFixed(1) || '4.0'}
                 </Text>
               </View>
+              {!user && (
+                <Text style={{ color: '#888', fontSize: 13, marginTop: 4 }}>
+                  Inicia sesión para calificar y comentar este negocio
+                </Text>
+              )}
+              {user && (
+                <View style={{ marginTop: 10 }}>
+                  <TextInput
+                    placeholder="Escribe tu comentario..."
+                    value={userComment}
+                    onChangeText={setUserComment}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: '#ccc',
+                      borderRadius: 8,
+                      padding: 8,
+                      marginBottom: 8,
+                      minHeight: 40
+                    }}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#FF7D1A',
+                      padding: 10,
+                      borderRadius: 8,
+                      alignItems: 'center'
+                    }}
+                    onPress={handleSaveComment}
+                  >
+                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Guardar comentario</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Botones de acción */}
@@ -241,6 +398,31 @@ export default function NegocioDetalle() {
                 </View>
               </View>
             )}
+
+            {/* Comentarios */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Comentarios</Text>
+              {comentarios.length === 0 ? (
+                <Text style={styles.emptyStateText}>No hay comentarios aún.</Text>
+              ) : (
+                comentarios.map((c, idx) => (
+                  <View key={idx} style={{ marginBottom: 16, backgroundColor: '#F9F9F9', borderRadius: 10, padding: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      {Array(5).fill(0).map((_, i) => (
+                        <Ionicons
+                          key={i}
+                          name={i < c.valor ? "star" : "star-outline"}
+                          size={16}
+                          color="#FFD700"
+                          style={{ marginRight: 1 }}
+                        />
+                      ))}
+                    </View>
+                    <Text style={{ color: '#333', fontSize: 15 }}>{c.comentario || <Text style={{ color: '#aaa' }}>Sin comentario</Text>}</Text>
+                  </View>
+                ))
+              )}
+            </View>
           </View>
         </ScrollView>
       </View>

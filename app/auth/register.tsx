@@ -13,7 +13,8 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  useWindowDimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,11 +25,13 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [userType, setUserType] = useState('usuario'); // Nuevo estado para el tipo de usuario
+  const [userType, setUserType] = useState('usuario'); 
   const router = useRouter();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 768; // Punto de quiebre para móviles
   
   useEffect(() => {
     Animated.parallel([
@@ -96,8 +99,9 @@ export default function Register() {
           .insert([
             { 
               user_id: data.user.id, 
-              tipo_usuario: userType,
-              email: email 
+              email: email,
+              tipo_usuario: userType, // Guardar el tipo de usuario seleccionado
+              created_at: new Date().toISOString() // Fecha de creación automática
             }
           ]);
           
@@ -119,12 +123,12 @@ export default function Register() {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Animated.View style={[
-          styles.row,
+          isSmallScreen ? styles.columnSmall : styles.row,
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}>
           <Animated.View 
             style={[
-              styles.leftColumn,
+              isSmallScreen ? styles.leftColumnSmall : styles.leftColumn,
               { opacity: isKeyboardVisible ? 0.4 : fadeAnim }
             ]}
           >
@@ -137,11 +141,13 @@ export default function Register() {
             <Text style={styles.welcomeSubtext}>Únete a la comunidad de comercios en Ixmiquilpan</Text>
           </Animated.View>
           
-          <View style={styles.rightColumn}>
-            <View style={styles.titleRow}>
-              <Text style={styles.appTitle}>Compra en Ixmiquilpan</Text>
-              <Text style={styles.titulo2}>Tai ha Ntsotk ani</Text>
-            </View>
+          <View style={isSmallScreen ? styles.rightColumnSmall : styles.rightColumn}>
+            {!isSmallScreen && (
+              <View style={styles.titleRow}>
+                <Text style={styles.appTitle}>Compra en Ixmiquilpan</Text>
+                <Text style={styles.titulo2}>Tai ha Ntsotk ani</Text>
+              </View>
+            )}
             
             <Animated.View 
               style={[styles.formRow, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
@@ -304,6 +310,12 @@ const styles = StyleSheet.create({
     gap: 16,
     maxHeight: 700,
   },
+  columnSmall: {
+    flexDirection: 'column',
+    width: '100%',
+    backgroundColor: 'transparent',
+    gap: 16,
+  },
   leftColumn: {
     flex: 2,
     backgroundColor: '#800020',
@@ -318,8 +330,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+  leftColumnSmall: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#800020',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
   rightColumn: {
     flex: 1,
+    backgroundColor: 'transparent',
+    padding: 0,
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  rightColumnSmall: {
+    width: '100%',
     backgroundColor: 'transparent',
     padding: 0,
     justifyContent: 'center',
@@ -391,12 +425,13 @@ const styles = StyleSheet.create({
   formRow: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 32,
+    padding: Platform.OS === 'web' ? 32 : 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
+    width: '100%',
   },
   registerTitle: {
     fontSize: 24,

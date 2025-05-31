@@ -14,7 +14,6 @@ import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 
-// Puedes poner esto en un archivo común o en ambos archivos
 const CATEGORIAS = [
   'Restaurante',
   'Tecnología',
@@ -67,7 +66,6 @@ export default function NegocioNuevo() {
   const isSmallScreen = windowWidth < 600;
 
   useEffect(() => {
-    // Animación de entrada
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -108,7 +106,6 @@ export default function NegocioNuevo() {
     });
     
     if (!result.canceled && result.assets.length > 0) {
-      // Animación al seleccionar imagen
       Animated.sequence([
         Animated.timing(rotateAnim, {
           toValue: 1,
@@ -144,7 +141,6 @@ export default function NegocioNuevo() {
 
   const agregarProducto = () => {
     if (!productoNombre || !productoPrecio) {
-      // Shake animation para error
       Animated.sequence([
         Animated.timing(slideAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
@@ -156,7 +152,6 @@ export default function NegocioNuevo() {
       return;
     }
     
-    // Animar la adición del producto
     lottieRef.current?.play(0, 50);
     
     setProductos([
@@ -178,7 +173,6 @@ export default function NegocioNuevo() {
       return;
     }
 
-    // Validar horarios (ejemplo simple: que todos tengan hora de apertura y cierre)
     for (const dia of Object.keys(horarios)) {
       const h = horarios[dia];
       if (!h.apertura.hora || !h.apertura.minuto || !h.cierre.hora || !h.cierre.minuto) {
@@ -198,6 +192,19 @@ export default function NegocioNuevo() {
       urlImagen = url;
     }
 
+    console.log({
+      nombre,
+      descripcion,
+      ubicacion,
+      imagen_url: urlImagen,
+      productos,
+      user_id: userId,
+      aprobado: false,
+      telefono,
+      horarios,
+      categoria: tipoNegocio,
+    });
+
     const { error } = await supabase.from('negocios').insert({
       nombre,
       descripcion,
@@ -208,19 +215,18 @@ export default function NegocioNuevo() {
       aprobado: false,
       telefono,
       horarios,
-      categoria: tipoNegocio, // <-- Cambia 'tipo' por 'categoria'
+      tipo: tipoNegocio, 
     });
 
     setLoading(false);
     if (error) {
-      Alert.alert('Error al guardar', error.message);
+      Alert.alert('Error al guardar', error.message + '\n' + JSON.stringify(error.details || ''));
     } else {
       Alert.alert('Negocio enviado', 'Esperando aprobación del administrador');
       router.replace('/negocios');
     }
   };
 
-  // Animación del botón
   const animateButton = () => {
     Animated.sequence([
       Animated.timing(scaleAnim, {
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginHorizontal: 15,
-    gap: 15, // Añade espacio entre columnas
+    gap: 15,
   },
   columnCard: {
     flex: 1,

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { supabase } from '../../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -38,7 +39,8 @@ const COLORS = {
   lightBurgundy: '#f0e6e8',
   darkGold: '#b8941d',
   background: '#F0F2F5',
-  border: '#E4E6EB'
+  border: '#E4E6EB',
+  overlay: 'rgba(0,0,0,0.7)'
 };
 
 const CATEGORIAS = [
@@ -54,6 +56,39 @@ const CATEGORIAS = [
   'Supermercado',
   'Otro'
 ];
+
+// Función para generar un seed basado en un identificador de dispositivo
+const getDeviceSpecificSeed = async () => {
+  try {
+    let deviceSeed = await AsyncStorage.getItem('deviceSeed');
+    if (!deviceSeed) {
+      deviceSeed = Math.random().toString(36).substring(2, 15);
+      await AsyncStorage.setItem('deviceSeed', deviceSeed);
+    }
+    return deviceSeed;
+  } catch (e) {
+    return new Date().getDate().toString();
+  }
+};
+
+// Función para aleatorizar array con seed específico
+const shuffleArray = (array, seed) => {
+  const newArray = [...array];
+  const seededRandom = (function () {
+    let s = 1779 + seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return function () {
+      s = (s * 9301 + 49297) % 233280;
+      return s / 233280;
+    };
+  })();
+
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+
+  return newArray;
+};
 
 const SkeletonItem = ({ isDesktop }) => {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
@@ -101,7 +136,7 @@ const SkeletonItem = ({ isDesktop }) => {
   );
 };
 
-const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
+const AnimatedItem = React.memo(({ item, index, onPress, isDesktop, isMobile }) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.98)).current;
 
@@ -131,8 +166,10 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
           transform: [{ scale }],
           marginBottom: 16,
           flex: isDesktop ? 1 : undefined,
-          marginHorizontal: isDesktop ? 6 : 0,
-        }
+          marginHorizontal: isDesktop ? 8 : 0,
+        },
+        isMobile && styles.cardMobile,
+        isDesktop && styles.cardDesktop
       ]}
     >
       <Pressable
@@ -141,26 +178,77 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
         style={styles.cardPressable}
       >
         {item.imagen_url ? (
-          <Image source={{ uri: item.imagen_url }} style={styles.image} />
+          <Image 
+            source={{ uri: item.imagen_url }} 
+            style={[styles.image, isMobile && styles.imageMobile, isDesktop && styles.imageDesktop]} 
+          />
         ) : (
-          <View style={styles.placeholderImage}>
-            <Ionicons name="business-outline" size={40} color={COLORS.burgundy} />
+          <View style={[
+            styles.placeholderImage, 
+            isMobile && styles.placeholderImageMobile,
+            isDesktop && styles.placeholderImageDesktop
+          ]}>
+            <Ionicons 
+              name="business-outline" 
+              size={isMobile ? 30 : isDesktop ? 60 : 40} 
+              color={COLORS.burgundy} 
+            />
           </View>
         )}
 
-        <View style={styles.cardContent}>
-          <Text style={styles.title}>{item.nombre}</Text>
-          <Text numberOfLines={2} style={styles.description}>{item.descripcion}</Text>
+        <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
+          <Text style={[
+            styles.title, 
+            isMobile && styles.titleMobile,
+            isDesktop && styles.titleDesktop
+          ]}>{item.nombre}</Text>
+          <Text 
+            numberOfLines={isDesktop ? 3 : 2} 
+            style={[
+              styles.description, 
+              isMobile && styles.descriptionMobile,
+              isDesktop && styles.descriptionDesktop
+            ]}
+          >
+            {item.descripcion}
+          </Text>
 
           <View style={styles.footer}>
             <View style={styles.locationContainer}>
-              <Ionicons name="location" size={14} color={COLORS.burgundy} />
-              <Text style={styles.location}>{item.ubicacion}</Text>
+              <Ionicons 
+                name="location" 
+                size={isMobile ? 12 : isDesktop ? 18 : 14} 
+                color={COLORS.burgundy} 
+              />
+              <Text style={[
+                styles.location, 
+                isMobile && styles.locationMobile,
+                isDesktop && styles.locationDesktop
+              ]}>
+                {item.ubicacion}
+              </Text>
             </View>
 
-            <TouchableOpacity style={styles.viewButton} onPress={onPress}>
-              <Text style={styles.viewButtonText}>Ver detalles</Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+            <TouchableOpacity 
+              style={[
+                styles.viewButton, 
+                isMobile && styles.viewButtonMobile,
+                isDesktop && styles.viewButtonDesktop
+              ]} 
+              onPress={onPress}
+            >
+              <Text style={[
+                styles.viewButtonText, 
+                isMobile && styles.viewButtonTextMobile,
+                isDesktop && styles.viewButtonTextDesktop
+              ]}>
+                Ver detalles
+              </Text>
+              <Ionicons 
+                name="chevron-forward" 
+                size={isMobile ? 12 : isDesktop ? 16 : 14} 
+                color={COLORS.primary} 
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -169,24 +257,22 @@ const AnimatedItem = React.memo(({ item, index, onPress, isDesktop }) => {
   );
 });
 
-const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
+const FilterBar = ({ onSearch, activeFilter, setActiveFilter, isMobile }) => {
   const [searchText, setSearchText] = useState('');
-  const { width } = useWindowDimensions();
-  
+
   const filters = ['Todos', 'Nombre', 'Descripción', 'Ubicación'];
-  const isMobile = width < 500;
-  
-  const handleSearch = (text) => {
+
+  const handleSearch = (text = '') => {
     setSearchText(text);
     onSearch(text);
   };
-  
+
   return (
     <View style={styles.filterContainer}>
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={20} color={COLORS.gray} />
+      <View style={[styles.searchBar, isMobile && styles.searchBarMobile]}>
+        <Ionicons name="search" size={isMobile ? 16 : 20} color={COLORS.gray} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, isMobile && styles.searchInputMobile]}
           placeholder={isMobile ? "Buscar..." : "Buscar negocios..."}
           placeholderTextColor={COLORS.gray}
           value={searchText}
@@ -194,33 +280,41 @@ const FilterBar = ({ onSearch, activeFilter, setActiveFilter }) => {
         />
         {searchText.length > 0 && (
           <TouchableOpacity onPress={() => handleSearch('')}>
-            <Ionicons name="close-circle" size={20} color={COLORS.gray} />
+            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color={COLORS.gray} />
           </TouchableOpacity>
         )}
       </View>
-      
-      <View style={styles.filterTabsContainer}>
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterTab,
-              activeFilter === filter && styles.activeFilterTab
-            ]}
-            onPress={() => setActiveFilter(filter)}
-          >
-            <Text
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={isMobile ? styles.filterTabsScrollMobile : {}}
+      >
+        <View style={[styles.filterTabsContainer, isMobile && styles.filterTabsContainerMobile]}>
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter}
               style={[
-                styles.filterTabText,
-                activeFilter === filter && styles.activeFilterTabText
+                styles.filterTab,
+                isMobile && styles.filterTabMobile,
+                activeFilter === filter && styles.activeFilterTab
               ]}
+              onPress={() => setActiveFilter(filter)}
             >
-              {filter}
-            </Text>
-            {activeFilter === filter && <View style={styles.activeIndicator} />}
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.filterTabText,
+                  isMobile && styles.filterTabTextMobile,
+                  activeFilter === filter && styles.activeFilterTabText
+                ]}
+              >
+                {filter}
+              </Text>
+              {activeFilter === filter && <View style={styles.activeIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -231,11 +325,11 @@ const CategoriesPanel = ({ activeCategory, setActiveCategory }) => {
       <View style={styles.categoriesHeader}>
         <Text style={styles.categoriesPanelTitle}>Categorías</Text>
       </View>
-      
+
       <ScrollView showsVerticalScrollIndicator={false}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.categoryItem, 
+            styles.categoryItem,
             activeCategory === 'all' && styles.activeCategoryItem
           ]}
           onPress={() => setActiveCategory('all')}
@@ -243,21 +337,21 @@ const CategoriesPanel = ({ activeCategory, setActiveCategory }) => {
           <View style={[styles.categoryIcon, { backgroundColor: COLORS.burgundy }]}>
             <Ionicons name="grid-outline" size={18} color={COLORS.primary} />
           </View>
-          <Text 
+          <Text
             style={[
-              styles.categoryText, 
+              styles.categoryText,
               activeCategory === 'all' && styles.activeCategoryText
             ]}
           >
             Todos los negocios
           </Text>
         </TouchableOpacity>
-        
+
         {CATEGORIAS.map((category) => (
-          <TouchableOpacity 
-            key={category} 
+          <TouchableOpacity
+            key={category}
             style={[
-              styles.categoryItem, 
+              styles.categoryItem,
               activeCategory === category && styles.activeCategoryItem
             ]}
             onPress={() => setActiveCategory(category)}
@@ -265,9 +359,9 @@ const CategoriesPanel = ({ activeCategory, setActiveCategory }) => {
             <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(category) }]}>
               <Ionicons name={getCategoryIcon(category)} size={18} color={COLORS.primary} />
             </View>
-            <Text 
+            <Text
               style={[
-                styles.categoryText, 
+                styles.categoryText,
                 activeCategory === category && styles.activeCategoryText
               ]}
             >
@@ -286,7 +380,7 @@ const TopRatedPanel = ({ topBusinesses, router }) => {
       <View style={styles.topRatedHeader}>
         <Text style={styles.topRatedTitle}>Mejor calificados</Text>
       </View>
-      
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {topBusinesses.map((business) => (
           <TouchableOpacity
@@ -303,7 +397,7 @@ const TopRatedPanel = ({ topBusinesses, router }) => {
                 </View>
               )}
             </View>
-            
+
             <View style={styles.topRatedContent}>
               <Text style={styles.topRatedName} numberOfLines={1}>
                 {business.nombre}
@@ -330,6 +424,177 @@ const TopRatedPanel = ({ topBusinesses, router }) => {
   );
 };
 
+const MobileSidePanel = ({ 
+  isVisible, 
+  onClose, 
+  activeCategory, 
+  setActiveCategory,
+  topBusinesses,
+  router
+}) => {
+  const panelAnimation = useRef(new Animated.Value(isVisible ? 0 : -300)).current;
+  const fadeAnimation = useRef(new Animated.Value(isVisible ? 1 : 0)).current;
+  
+  useEffect(() => {
+    if (isVisible) {
+      Animated.parallel([
+        Animated.timing(panelAnimation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true
+        }),
+        Animated.timing(fadeAnimation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true
+        })
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(panelAnimation, {
+          toValue: -300,
+          duration: 300,
+          useNativeDriver: true
+        }),
+        Animated.timing(fadeAnimation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true
+        })
+      ]).start();
+    }
+  }, [isVisible]);
+
+  if (!isVisible && fadeAnimation._value === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Animated.View 
+        style={[
+          styles.overlay, 
+          { opacity: fadeAnimation }
+        ]}
+        pointerEvents={isVisible ? 'auto' : 'none'}
+      >
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+      </Animated.View>
+      <Animated.View 
+        style={[
+          styles.mobilePanel,
+          { transform: [{ translateX: panelAnimation }] }
+        ]}
+      >
+        <View style={styles.mobilePanelHeader}>
+          <Text style={styles.mobilePanelTitle}>Opciones</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={COLORS.burgundy} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.mobilePanelContent}>
+          <Text style={styles.mobileSectionTitle}>Categorías</Text>
+          
+          <TouchableOpacity
+            style={[
+              styles.categoryItem,
+              activeCategory === 'all' && styles.activeCategoryItem
+            ]}
+            onPress={() => {
+              setActiveCategory('all');
+              onClose();
+            }}
+          >
+            <View style={[styles.categoryIcon, { backgroundColor: COLORS.burgundy }]}>
+              <Ionicons name="grid-outline" size={18} color={COLORS.primary} />
+            </View>
+            <Text
+              style={[
+                styles.categoryText,
+                activeCategory === 'all' && styles.activeCategoryText
+              ]}
+            >
+              Todos los negocios
+            </Text>
+          </TouchableOpacity>
+
+          {CATEGORIAS.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryItem,
+                activeCategory === category && styles.activeCategoryItem
+              ]}
+              onPress={() => {
+                setActiveCategory(category);
+                onClose();
+              }}
+            >
+              <View style={[styles.categoryIcon, { backgroundColor: getCategoryColor(category) }]}>
+                <Ionicons name={getCategoryIcon(category)} size={18} color={COLORS.primary} />
+              </View>
+              <Text
+                style={[
+                  styles.categoryText,
+                  activeCategory === category && styles.activeCategoryText
+                ]}
+              >
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          <View style={styles.sectionSeparator} />
+
+          <Text style={styles.mobileSectionTitle}>Mejor calificados</Text>
+          
+          {topBusinesses.map((business) => (
+            <TouchableOpacity
+              key={business.id}
+              style={styles.topRatedItem}
+              onPress={() => {
+                router.push(`/negocios/${business.id}`);
+                onClose();
+              }}
+            >
+              <View style={styles.topRatedImageContainer}>
+                {business.imagen_url ? (
+                  <Image source={{ uri: business.imagen_url }} style={styles.topRatedImage} />
+                ) : (
+                  <View style={styles.topRatedPlaceholder}>
+                    <Ionicons name="business-outline" size={16} color={COLORS.burgundy} />
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.topRatedContent}>
+                <Text style={styles.topRatedName} numberOfLines={1}>
+                  {business.nombre}
+                </Text>
+                <View style={styles.topRatedRating}>
+                  {[...Array(5)].map((_, i) => (
+                    <Ionicons
+                      key={i}
+                      name={i < Math.round(business.calificacion || 0) ? "star" : "star-outline"}
+                      size={12}
+                      color={COLORS.gold}
+                      style={styles.topRatedStar}
+                    />
+                  ))}
+                  <Text style={styles.topRatedScore}>
+                    {business.calificacion?.toFixed(1) || '0.0'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Animated.View>
+    </>
+  );
+};
+
 const getCategoryIcon = (category) => {
   const icons = {
     'Restaurante': 'restaurant-outline',
@@ -344,7 +609,7 @@ const getCategoryIcon = (category) => {
     'Supermercado': 'basket-outline',
     'Otro': 'apps-outline'
   };
-  
+
   return icons[category] || 'apps-outline';
 };
 
@@ -362,7 +627,7 @@ const getCategoryColor = (category) => {
     'Supermercado': '#009688',
     'Otro': '#757575'
   };
-  
+
   return colors[category] || COLORS.burgundy;
 };
 
@@ -376,22 +641,26 @@ export default function Negocios() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [categories, setCategories] = useState([]);
   const [topRatedBusinesses, setTopRatedBusinesses] = useState([]);
+  const [deviceSeed, setDeviceSeed] = useState('');
+  const [sidePanelVisible, setSidePanelVisible] = useState(false);
+  const [user, setUser] = useState(null);
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
 
+  const isMobile = width < 500;
+  const isTablet = width >= 500 && width < 768;
   const isDesktop = width >= 768;
   const isLargeDesktop = width >= 1200;
-  const isMobile = width < 500;
+  const isExtraLargeDesktop = width >= 1600;
 
   const extractCategories = (data) => {
-    // Extraemos solo las categorías que están en nuestra lista predefinida
     const categoriesSet = new Set();
     data.forEach(item => {
-      if (item.categoria && CATEGORIAS.includes(item.categoria)) {
-        categoriesSet.add(item.categoria);
+      if (item.tipo && CATEGORIAS.includes(item.tipo)) {
+        categoriesSet.add(item.tipo);
       }
     });
     return Array.from(categoriesSet);
@@ -414,12 +683,18 @@ export default function Negocios() {
     if (error) console.error('Error al cargar negocios:', error.message);
     else {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setNegocios(data || []);
-      setFilteredNegocios(data || []);
-      
-      setCategories(extractCategories(data || []));
-      setTopRatedBusinesses(getTopRatedBusinesses(data || []));
-      
+
+      const originalData = data || [];
+      const shuffledData = deviceSeed
+        ? shuffleArray(originalData, deviceSeed)
+        : originalData;
+
+      setNegocios(shuffledData);
+      setFilteredNegocios(shuffledData);
+
+      setCategories(extractCategories(originalData));
+      setTopRatedBusinesses(getTopRatedBusinesses(originalData));
+
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -443,44 +718,58 @@ export default function Negocios() {
   };
 
   useEffect(() => {
+    const getSeed = async () => {
+      const seed = await getDeviceSpecificSeed();
+      setDeviceSeed(seed);
+    };
+
+    getSeed();
     fetchNegocios();
+  }, []);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+    };
+    getUser();
   }, []);
 
   const handleSearch = (text) => {
     setSearchQuery(text);
-    
+
     if (!text.trim() && activeCategory === 'all') {
       setFilteredNegocios(negocios);
       return;
     }
-    
+
     const lowercasedQuery = text.toLowerCase();
     let filtered = negocios;
-    
+
     if (activeCategory !== 'all') {
-      filtered = filtered.filter(item => item.categoria === activeCategory);
+      filtered = filtered.filter(item => item.tipo === activeCategory);
     }
-    
+
     if (text.trim()) {
       switch (activeFilter) {
         case 'Nombre':
-          filtered = filtered.filter(item => 
+          filtered = filtered.filter(item =>
             item.nombre.toLowerCase().includes(lowercasedQuery)
           );
           break;
         case 'Descripción':
-          filtered = filtered.filter(item => 
+          filtered = filtered.filter(item =>
             item.descripcion.toLowerCase().includes(lowercasedQuery)
           );
           break;
         case 'Ubicación':
-          filtered = filtered.filter(item => 
+          filtered = filtered.filter(item =>
             item.ubicacion.toLowerCase().includes(lowercasedQuery)
           );
           break;
         case 'Todos':
         default:
-          filtered = filtered.filter(item => 
+          filtered = filtered.filter(item =>
             item.nombre.toLowerCase().includes(lowercasedQuery) ||
             item.descripcion.toLowerCase().includes(lowercasedQuery) ||
             item.ubicacion.toLowerCase().includes(lowercasedQuery)
@@ -488,7 +777,7 @@ export default function Negocios() {
           break;
       }
     }
-    
+
     setFilteredNegocios(filtered);
   };
 
@@ -506,7 +795,7 @@ export default function Negocios() {
         </View>
       );
     }
-    
+
     if (filteredNegocios.length === 0) {
       return (
         <View style={styles.emptyContainer}>
@@ -516,7 +805,7 @@ export default function Negocios() {
         </View>
       );
     }
-    
+
     return (
       <View style={styles.feedContainer}>
         {filteredNegocios.map((item, index) => (
@@ -532,47 +821,85 @@ export default function Negocios() {
     );
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
     <View style={styles.container}>
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.headerContainer, 
-          { 
+          styles.headerContainer,
+          {
             opacity: fadeAnim,
             transform: [{ translateY: translateY }]
           }
         ]}
       >
-        <View style={styles.headerContent}>
+        <View style={[styles.headerContent, isExtraLargeDesktop && styles.headerContentExtraLarge]}>
           <View style={[styles.headerTop, isMobile && styles.headerTopMobile]}>
-            <Text style={[styles.header, isMobile && styles.headerMobile]}>Negocios</Text>
+            <Text style={[
+              styles.header, 
+              isMobile && styles.headerMobile,
+              isTablet && styles.headerTablet
+            ]}>Negocios</Text>
             <View style={[styles.navButtons, isMobile && styles.navButtonsMobile]}>
-              <TouchableOpacity 
-                style={styles.navButton}
+              {isMobile && (
+                <TouchableOpacity
+                  style={[styles.navButton, styles.navButtonMobile, styles.menuButton]}
+                  onPress={() => setSidePanelVisible(true)}
+                >
+                  <Ionicons name="menu-outline" size={18} color={COLORS.burgundy} />
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.navButton, isMobile && styles.navButtonMobile]}
                 onPress={() => router.push('/')}
               >
-                <Ionicons name="home-outline" size={18} color={COLORS.burgundy} />
+                <Ionicons name="home-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
                 {!isMobile && <Text style={styles.navButtonText}>Inicio</Text>}
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.navButton}
-                onPress={() => router.push('/auth/login')}
-              >
-                <Ionicons name="log-in-outline" size={18} color={COLORS.burgundy} />
-                {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
-              </TouchableOpacity>
+
+              {!user ? (
+                <TouchableOpacity
+                  style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                  onPress={() => router.push('/auth/login')}
+                >
+                  <Ionicons name="log-in-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                  {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
+                </TouchableOpacity>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.navButton, isMobile && styles.navButtonMobile, { backgroundColor: COLORS.burgundy }]}>
+                    <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>
+                      {user.user_metadata?.nombre
+                        ? user.user_metadata.nombre.split(' ')[0][0].toUpperCase()
+                        : user.email[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons name="log-out-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                    {!isMobile && <Text style={styles.navButtonText}>Salir</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
-          
-          <FilterBar 
-            onSearch={handleSearch} 
+
+          <FilterBar
+            onSearch={handleSearch}
             activeFilter={activeFilter}
             setActiveFilter={setActiveFilter}
+            isMobile={isMobile}
           />
         </View>
       </Animated.View>
-      
+
       {loading && !isDesktop ? (
         <View style={styles.loadingContainer}>
           {[...Array(3)].map((_, index) => (
@@ -581,33 +908,38 @@ export default function Negocios() {
         </View>
       ) : isDesktop ? (
         <View style={styles.threeColumnLayout}>
-          <Animated.View 
+          <Animated.View
             style={[
-              styles.leftPanel, 
-              { opacity: fadeAnim }
+              styles.leftPanel,
+              { opacity: fadeAnim },
+              isExtraLargeDesktop && styles.leftPanelExtraLarge
             ]}
           >
-            <CategoriesPanel 
+            <CategoriesPanel
               activeCategory={activeCategory}
               setActiveCategory={setActiveCategory}
             />
           </Animated.View>
-          
-          <Animated.ScrollView 
-            contentContainerStyle={styles.desktopContainer}
+
+          <Animated.ScrollView
+            contentContainerStyle={[
+              styles.desktopContainer,
+              isExtraLargeDesktop && styles.desktopContainerExtraLarge
+            ]}
             style={[{ opacity: fadeAnim }, styles.centerPanel]}
           >
             {renderMainContent()}
           </Animated.ScrollView>
-          
+
           {isLargeDesktop && (
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.rightPanel, 
-                { opacity: fadeAnim }
+                styles.rightPanel,
+                { opacity: fadeAnim },
+                isExtraLargeDesktop && styles.rightPanelExtraLarge
               ]}
             >
-              <TopRatedPanel 
+              <TopRatedPanel
                 topBusinesses={topRatedBusinesses}
                 router={router}
               />
@@ -625,12 +957,16 @@ export default function Negocios() {
               index={index}
               onPress={() => router.push(`/negocios/${item.id}`)}
               isDesktop={false}
+              isMobile={isMobile}
             />
           )}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[
+            styles.listContainer,
+            isMobile && styles.listContainerMobile
+          ]}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="search-outline" size={70} color={COLORS.gray} />
+              <Ionicons name="search-outline" size={isMobile ? 50 : 70} color={COLORS.gray} />
               <Text style={styles.emptyText}>No se encontraron negocios</Text>
               <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
             </View>
@@ -639,14 +975,24 @@ export default function Negocios() {
           refreshing={refreshing}
         />
       )}
+
+      {/* Panel lateral móvil */}
+      <MobileSidePanel
+        isVisible={sidePanelVisible}
+        onClose={() => setSidePanelVisible(false)}
+        activeCategory={activeCategory}
+        setActiveCategory={setActiveCategory}
+        topBusinesses={topRatedBusinesses}
+        router={router}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: COLORS.background 
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background
   },
   headerContainer: {
     backgroundColor: COLORS.primary,
@@ -666,6 +1012,9 @@ const styles = StyleSheet.create({
     maxWidth: 1200,
     alignSelf: 'center',
   },
+  headerContentExtraLarge: {
+    maxWidth: 1600,
+  },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -674,14 +1023,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   headerTopMobile: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  header: { 
-    fontSize: 24, 
+  header: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.burgundy,
   },
   headerMobile: {
+    fontSize: 20,
+  },
+  headerTablet: {
     fontSize: 22,
   },
   navButtons: {
@@ -689,7 +1041,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navButtonsMobile: {
-    marginTop: 4,
+    marginTop: 2,
   },
   navButton: {
     flexDirection: 'row',
@@ -701,11 +1053,10 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     borderWidth: 0,
   },
-  navButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+  navButtonMobile: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     marginLeft: 6,
-    color: COLORS.burgundy,
   },
   card: {
     backgroundColor: COLORS.primary,
@@ -717,19 +1068,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     height: 'auto',
-    minHeight: 200,
-    maxHeight: 350,
+    minHeight: 170,
+    maxHeight: 300,
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 12,
     width: '100%',
-    maxWidth: 730,
     alignSelf: 'center',
+  },
+  cardMobile: {
+    minHeight: 120,
+    maxHeight: 220,
+    borderRadius: 6,
+    width: 250,
+  },
+  cardDesktop: {
+    minHeight: 300,
+    maxHeight: 450,
+    width: '100%',
+    maxWidth: 800,
+    minWidth: 900,
+    marginBottom: 25
   },
   cardContent: {
     padding: 14,
     flex: 1,
     justifyContent: 'space-between',
+  },
+  cardContentMobile: {
+    padding: 12,
   },
   title: {
     fontSize: 18,
@@ -737,11 +1104,29 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     color: COLORS.burgundy,
   },
+  titleMobile: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  titleDesktop: {
+    fontSize: 22,
+    marginBottom: 8,
+  },
   description: {
     fontSize: 14,
     color: COLORS.text,
     marginBottom: 14,
     lineHeight: 20,
+  },
+  descriptionMobile: {
+    fontSize: 13,
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  descriptionDesktop: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 16,
   },
   footer: {
     flexDirection: 'row',
@@ -762,6 +1147,12 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     marginLeft: 4,
   },
+  locationMobile: {
+    fontSize: 12,
+  },
+  locationDesktop: {
+    fontSize: 14,
+  },
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -770,11 +1161,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 6,
   },
+  viewButtonMobile: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  viewButtonDesktop: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+  },
   viewButtonText: {
     fontSize: 13,
     color: COLORS.primary,
     fontWeight: '500',
     marginRight: 4,
+  },
+  viewButtonTextMobile: {
+    fontSize: 12,
+  },
+  viewButtonTextDesktop: {
+    fontSize: 15,
+    marginRight: 6,
   },
   image: {
     width: '100%',
@@ -782,12 +1189,24 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     backgroundColor: '#e0e0e0',
   },
+  imageMobile: {
+    height: 160,
+  },
+  imageDesktop: {
+    height: 280,
+  },
   placeholderImage: {
     width: '100%',
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0e6e8',
+  },
+  placeholderImageMobile: {
+    height: 160,
+  },
+  placeholderImageDesktop: {
+    height: 280,
   },
   loadingContainer: {
     padding: 16,
@@ -822,6 +1241,10 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     alignItems: 'center',
   },
+  desktopContainerExtraLarge: {
+    maxWidth: 1200,
+    margin: 'auto',
+  },
   feedContainer: {
     width: '100%',
     maxWidth: 650,
@@ -834,6 +1257,10 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 10,
     alignItems: 'center',
+  },
+  listContainerMobile: {
+    padding: 12,
+    paddingTop: 8,
   },
   filterContainer: {
     marginBottom: 0,
@@ -849,6 +1276,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  searchBarMobile: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
   searchInput: {
     flex: 1,
     fontSize: 15,
@@ -857,16 +1289,29 @@ const styles = StyleSheet.create({
     padding: 0,
     fontWeight: '400',
   },
+  searchInputMobile: {
+    fontSize: 14,
+  },
   filterTabsContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  filterTabsContainerMobile: {
+    paddingRight: 8,
+  },
+  filterTabsScrollMobile: {
+    paddingLeft: 8,
   },
   filterTab: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     position: 'relative',
     marginRight: 8,
+  },
+  filterTabMobile: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   activeFilterTab: {
     borderBottomWidth: 0,
@@ -875,6 +1320,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray,
     fontWeight: '500',
+  },
+  filterTabTextMobile: {
+    fontSize: 13,
   },
   activeFilterTabText: {
     color: COLORS.burgundy,
@@ -936,6 +1384,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     display: 'flex',
   },
+  leftPanelExtraLarge: {
+    width: 280,
+  },
   centerPanel: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -946,6 +1397,9 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: COLORS.border,
     paddingTop: 16,
+  },
+  rightPanelExtraLarge: {
+    width: 340,
   },
   categoriesPanel: {
     flex: 1,
@@ -1052,5 +1506,66 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray,
     marginLeft: 4,
-  }
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.overlay,
+    zIndex: 100,
+  },
+  mobilePanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 280,
+    backgroundColor: COLORS.primary,
+    zIndex: 101,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  mobilePanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  mobilePanelTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  mobilePanelContent: {
+    flex: 1,
+    padding: 12,
+  },
+  mobileSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.burgundy,
+    marginVertical: 12,
+    paddingHorizontal: 6,
+  },
+  sectionSeparator: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 15,
+    marginHorizontal: 6,
+  },
+  menuButton: {
+    backgroundColor: 'rgba(128, 0, 32, 0.08)',
+    marginRight: 6,
+  },
 });
