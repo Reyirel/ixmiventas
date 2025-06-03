@@ -894,6 +894,16 @@ export default function Negocios() {
                         : user.email[0].toUpperCase()}
                     </Text>
                   </View>
+                  {/* Botón Mi Negocio solo si es negocio */}
+                  {userProfile?.tipo_usuario === 'negocio' && (
+                    <TouchableOpacity
+                      style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                      onPress={() => router.push('/negocio-nuevo')}
+                    >
+                      <Ionicons name="storefront-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                      {!isMobile && <Text style={styles.navButtonText}>Mi negocio</Text>}
+                    </TouchableOpacity>
+                  )}
                   {/* Botón Dashboard solo si es admin */}
                   {userProfile?.tipo_usuario === 'admin' && (
                     <TouchableOpacity
