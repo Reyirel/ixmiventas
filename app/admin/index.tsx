@@ -130,11 +130,15 @@ export default function AdminScreen() {
     }
   };
 
+  const [confirmarEliminar, setConfirmarEliminar] = useState<{visible: boolean, id?: number}>({visible: false});
+
   // Eliminar negocio
   const eliminar = async (id: number) => {
     try {
+      console.log('Entrando a eliminar con id:', id);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.log('No user');
         Alert.alert('Error', 'No estás autenticado');
         return;
       }
@@ -144,39 +148,40 @@ export default function AdminScreen() {
         .select('tipo_usuario')
         .eq('user_id', user.id)
         .single();
-      
+
+      console.log('Perfil obtenido:', perfil);
+
       if (!perfil || perfil.tipo_usuario !== 'admin') {
+        console.log('No es admin');
         Alert.alert('Error', 'No tienes permisos de administrador');
         return;
       }
 
-      Alert.alert(
-        'Confirmar eliminación',
-        '¿Estás seguro de eliminar este negocio? Esta acción no se puede deshacer.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Eliminar', 
-            style: 'destructive', 
-            onPress: async () => {
-              const { error } = await supabase
-                .from('negocios')
-                .delete()
-                .eq('id', id);
-                
-              if (error) {
-                Alert.alert('Error', 'No se pudo eliminar el negocio');
-              } else {
-                Alert.alert('Éxito', 'Negocio eliminado correctamente');
-                fetchNegocios();
-              }
-            }
-          }
-        ]
-      );
+      // En web, usamos modal propio
+      setConfirmarEliminar({visible: true, id});
     } catch (error) {
+      console.log('Error general en eliminar:', error);
       Alert.alert('Error', 'Error al verificar permisos');
     }
+  };
+
+  const confirmarEliminarNegocio = async () => {
+    if (!confirmarEliminar.id) return;
+    console.log('Intentando eliminar negocio con id:', confirmarEliminar.id);
+    const { error } = await supabase
+      .from('negocios')
+      .delete()
+      .eq('id', confirmarEliminar.id);
+
+    if (error) {
+      console.log('Error al eliminar negocio:', error.message);
+      Alert.alert('Error', 'No se pudo eliminar el negocio');
+    } else {
+      console.log('Negocio eliminado correctamente');
+      Alert.alert('Éxito', 'Negocio eliminado correctamente');
+      fetchNegocios();
+    }
+    setConfirmarEliminar({visible: false});
   };
 
   // Abrir modal de edición
@@ -634,6 +639,24 @@ export default function AdminScreen() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de confirmación de eliminación */}
+      <Modal visible={confirmarEliminar.visible} transparent animationType="fade">
+        <View style={{flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'rgba(0,0,0,0.3)'}}>
+          <View style={{backgroundColor:'#fff', padding:24, borderRadius:16, width:300}}>
+            <Text style={{fontSize:18, fontWeight:'bold', marginBottom:16}}>¿Eliminar negocio?</Text>
+            <Text style={{marginBottom:24}}>¿Estás seguro de eliminar este negocio? Esta acción no se puede deshacer.</Text>
+            <View style={{flexDirection:'row', justifyContent:'flex-end', gap:12}}>
+              <TouchableOpacity onPress={() => setConfirmarEliminar({visible:false})}>
+                <Text style={{color:'#800020', fontWeight:'bold'}}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmarEliminarNegocio}>
+                <Text style={{color:'#f44336', fontWeight:'bold'}}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

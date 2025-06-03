@@ -644,6 +644,7 @@ export default function Negocios() {
   const [deviceSeed, setDeviceSeed] = useState('');
   const [sidePanelVisible, setSidePanelVisible] = useState(false);
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const router = useRouter();
   const { width, height } = useWindowDimensions();
 
@@ -731,6 +732,20 @@ export default function Negocios() {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data?.user || null);
+
+      if (data?.user) {
+        // Buscar el perfil usando user_id, no id
+        const { data: perfil, error } = await supabase
+          .from('perfiles')
+          .select('tipo_usuario')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (!error) setUserProfile(perfil);
+        else setUserProfile(null);
+      } else {
+        setUserProfile(null);
+      }
     };
     getUser();
   }, []);
@@ -879,6 +894,16 @@ export default function Negocios() {
                         : user.email[0].toUpperCase()}
                     </Text>
                   </View>
+                  {/* Botón Dashboard solo si es admin */}
+                  {userProfile?.tipo_usuario === 'admin' && (
+                    <TouchableOpacity
+                      style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                      onPress={() => router.push('/admin/dashboard')}
+                    >
+                      <Ionicons name="speedometer-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                      {!isMobile && <Text style={styles.navButtonText}>Dashboard</Text>}
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={[styles.navButton, isMobile && styles.navButtonMobile]}
                     onPress={handleLogout}

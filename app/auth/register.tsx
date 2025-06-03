@@ -100,11 +100,10 @@ export default function Register() {
             { 
               user_id: data.user.id, 
               email: email,
-              tipo_usuario: userType, // Guardar el tipo de usuario seleccionado
-              created_at: new Date().toISOString() // Fecha de creación automática
+              tipo_usuario: userType, // Aquí debería ser 'usuario'
+              created_at: new Date().toISOString()
             }
           ]);
-          
         if (profileError) throw profileError;
       }
 
