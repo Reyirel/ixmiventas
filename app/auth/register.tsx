@@ -14,7 +14,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  useWindowDimensions
+  useWindowDimensions,
+  Modal,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -25,11 +27,16 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  const [userType, setUserType] = useState('usuario'); 
+  const [userType, setUserType] = useState('usuario');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const modalFadeAnim = useRef(new Animated.Value(0)).current;
+  const modalScaleAnim = useRef(new Animated.Value(0.8)).current;
   const { width } = useWindowDimensions();
   const isSmallScreen = width < 768; // Punto de quiebre para móviles
   
@@ -69,6 +76,45 @@ export default function Register() {
     return emailRegex.test(email);
   };
 
+  const showSuccessAnimation = () => {
+    setShowSuccessModal(true);
+    // Resetear valores de animación antes de iniciar
+    modalFadeAnim.setValue(0);
+    modalScaleAnim.setValue(0.8);
+    
+    Animated.parallel([
+      Animated.timing(modalFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true
+      }),
+      Animated.spring(modalScaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
+
+  const hideSuccessModal = () => {
+    Animated.parallel([
+      Animated.timing(modalFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true
+      }),
+      Animated.timing(modalScaleAnim, {
+        toValue: 0.8,
+        duration: 200,
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      setShowSuccessModal(false);
+      router.push('/auth/login');
+    });
+  };
+
   const handleRegister = async () => {
     if (!validateEmail()) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
@@ -85,6 +131,9 @@ export default function Register() {
       return;
     }
 
+    // Activa el loader
+    setIsLoading(true);
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -100,18 +149,39 @@ export default function Register() {
             { 
               user_id: data.user.id, 
               email: email,
-              tipo_usuario: userType, // Aquí debería ser 'usuario'
+              tipo_usuario: userType,
               created_at: new Date().toISOString()
             }
           ]);
-        if (profileError) throw profileError;
+        
+        if (profileError) {
+          console.error('Error al insertar perfil:', profileError);
+          // Considera manejar específicamente este error para mostrar un mensaje adecuado
+        }
       }
-
-      Alert.alert('Registro exitoso', 'Revisa tu correo para confirmar tu cuenta.');
-      router.push('/auth/login');
+      
+      // Mostrar notificación de éxito
+      setNotification({
+        show: true,
+        type: 'success',
+        message: `¡Registro exitoso! Te hemos enviado un correo a ${email}`
+      });
+      
+      // Redirigir después de 3 segundos
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 3000);
       
     } catch (error) {
-      Alert.alert('Error', error.message || 'No se pudo completar el registro');
+      console.log('Error en registro:', error);
+      setNotification({
+        show: true,
+        type: 'error',
+        message: error.message || 'No se pudo completar el registro'
+      });
+    } finally {
+      // Desactiva el loader sin importar el resultado
+      setIsLoading(false);
     }
   };
 
@@ -269,11 +339,19 @@ export default function Register() {
               ) : null}
               
               <TouchableOpacity 
-                style={styles.registerButton} 
+                style={[styles.registerButton, isLoading && styles.registerButtonDisabled]} 
                 onPress={handleRegister}
                 activeOpacity={0.8}
+                disabled={isLoading}
               >
-                <Text style={styles.registerButtonText}>Crear cuenta</Text>
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.registerButtonText}>Procesando...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.registerButtonText}>Crear cuenta</Text>
+                )}
               </TouchableOpacity>
               
               <View style={styles.loginContainer}>
@@ -286,6 +364,67 @@ export default function Register() {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Modal de éxito - Versión mejorada para móviles */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={hideSuccessModal}
+        statusBarTranslucent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View 
+            style={[
+              styles.modalContent,
+              {
+                opacity: modalFadeAnim,
+                transform: [{ scale: modalScaleAnim }]
+              }
+            ]}
+          >
+            <View style={styles.successIcon}>
+              <Ionicons name="mail" size={50} color="#4CAF50" />
+            </View>
+            
+            <Text style={styles.successTitle}>¡Registro exitoso!</Text>
+            
+            <Text style={styles.successMessage}>
+              Te hemos enviado un correo de confirmación a{'\n'}
+              <Text style={styles.emailText}>{email}</Text>
+            </Text>
+            
+            <Text style={styles.successSubMessage}>
+              Por favor, revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.successButton}
+              onPress={hideSuccessModal}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-in-outline" size={20} color="#fff" style={styles.buttonIcon} />
+              <Text style={styles.successButtonText}>Ir al Login</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Notificación temporal */}
+      {notification.show && (
+        <View style={[
+          styles.notification,
+          notification.type === 'success' ? styles.notificationSuccess : styles.notificationError
+        ]}>
+          <Text style={styles.notificationText}>{notification.message}</Text>
+          <TouchableOpacity 
+            onPress={() => setNotification({ show: false, type: '', message: '' })}
+            style={styles.notificationClose}
+          >
+            <Ionicons name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -501,10 +640,20 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  registerButtonDisabled: {
+    backgroundColor: '#a5636e', // Versión más clara del color principal
+    opacity: 0.8,
+  },
   registerButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   loginContainer: {
     flexDirection: 'row',
@@ -552,5 +701,115 @@ const styles = StyleSheet.create({
   },
   userTypeTextActive: {
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: Platform.OS === 'android' ? 50 : 20, // Ajuste para Android
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    width: Platform.OS === 'web' ? '90%' : '95%', // Más ancho en móviles
+    maxWidth: Platform.OS === 'web' ? 400 : 350,
+    minHeight: 300, // Altura mínima
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
+    position: 'relative',
+  },
+  
+  successIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#222',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 22,
+  },
+  emailText: {
+    fontWeight: 'bold',
+    color: '#800020',
+  },
+  successSubMessage: {
+    fontSize: 14,
+    color: '#777',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 20,
+  },
+  successButton: {
+    backgroundColor: '#800020',
+    borderRadius: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#800020',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  notification: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 9999,
+    elevation: 30,
+  },
+  notificationSuccess: {
+    backgroundColor: '#4CAF50',
+  },
+  notificationError: {
+    backgroundColor: '#FF5722',
+  },
+  notificationText: {
+    color: '#fff',
+    flex: 1,
+    fontWeight: '500',
+  },
+  notificationClose: {
+    marginLeft: 10,
+  },
+  loadingIcon: {
+    marginRight: 8,
   },
 });

@@ -908,7 +908,7 @@ export default function Negocios() {
                   {userProfile?.tipo_usuario === 'admin' && (
                     <TouchableOpacity
                       style={[styles.navButton, isMobile && styles.navButtonMobile]}
-                      onPress={() => router.push('/admin/dashboard')}
+                      onPress={() => router.push('/admin')}
                     >
                       <Ionicons name="speedometer-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
                       {!isMobile && <Text style={styles.navButtonText}>Dashboard</Text>}
