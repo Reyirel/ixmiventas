@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ixmitasti",
+    "name": "IxmiVentas",
     "slug": "ixmitasti",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -36,6 +36,14 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "assetBundlePatterns": [
+      "**/*"
+    ]
   }
 }

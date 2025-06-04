@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Animated, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, useWindowDimensions } from 'react-native';
+import { Animated, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, useWindowDimensions, SafeAreaView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,13 +12,18 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
   
-  // Determinar si es una pantalla pequeña (móvil)
-  const isMobile = width < 768;
-
+  // Usar useWindowDimensions en lugar de Dimensions.get
+  const { width, height } = useWindowDimensions();
+  const [isMobile, setIsMobile] = useState(width < 768);
+  
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Actualizar isMobile cuando cambian las dimensiones
+  useEffect(() => {
+    setIsMobile(width < 768);
+  }, [width]);
 
   useEffect(() => {
     Animated.parallel([
@@ -87,109 +92,119 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.row,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-            flexDirection: isMobile ? 'column' : 'row',
-            width: isMobile ? '95%' : '90%',
-            height: isMobile ? 'auto' : "75%"
-          }
-        ]}
-      >
-        <View style={[
-          styles.leftColumn,
-          isMobile && { width: '100%' }
-        ]}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Animated.View
+          style={[
+            styles.row,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+              flexDirection: isMobile ? 'column' : 'row',
+              width: '100%', // <-- Cambia esto
+              maxWidth: !isMobile ? 1200 : undefined, // Solo limita en desktop/tablet
+              height: !isMobile ? "75%" : undefined, // Solo limita en desktop/tablet
+              alignSelf: 'center'
+            }
+          ]}
+        >
           <View style={[
-            styles.titleRow,
-            isMobile && { paddingHorizontal: 16, paddingTop: 24 }
+            styles.leftColumn,
+            isMobile && { width: '100%' }
           ]}>
-            <Text style={[styles.appTitle, isMobile && { fontSize: 24 }]}>
-              Compra en Ixmiquilpan 
-            </Text>
-            <Text style={[styles.titulo2, isMobile && { fontSize: 22, marginBottom: 20 }]}>
-              Tai ha Ntsotk ani
-            </Text>
-          </View>
-          <View style={[
-            styles.formRow,
-            isMobile && { padding: 20 }
-          ]}>
-            <Text style={styles.loginTitle}>Iniciar sesión</Text>
-            <Text style={styles.subtitle}>Ingresa tus credenciales para continuar</Text>
-            <TextInput
-              placeholder="Correo electrónico"
-              value={email}
-              onChangeText={setEmail}
-              style={styles.input}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <View style={styles.passwordContainer}>
+            <View style={[
+              styles.titleRow,
+              isMobile && { paddingHorizontal: 16, paddingTop: 24 }
+            ]}>
+              <Text style={[styles.appTitle, isMobile && { fontSize: 24 }]}>
+                Compra en Ixmiquilpan 
+              </Text>
+              <Text style={[styles.titulo2, isMobile && { fontSize: 22, marginBottom: 20 }]}>
+                Tai ha Ntsotk ani
+              </Text>
+            </View>
+            <View style={[
+              styles.formRow,
+              isMobile && { padding: 20 }
+            ]}>
+              <Text style={styles.loginTitle}>Iniciar sesión</Text>
+              <Text style={styles.subtitle}>Ingresa tus credenciales para continuar</Text>
               <TextInput
-                placeholder="Contraseña"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                style={styles.passwordInput}
+                placeholder="Correo electrónico"
+                value={email}
+                onChangeText={setEmail}
+                style={styles.input}
+                autoCapitalize="none"
+                keyboardType="email-address"
               />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)} 
-                style={styles.passwordIcon}
-              >
-                <Ionicons 
-                  name={showPassword ? 'eye-off' : 'eye'} 
-                  size={24} 
-                  color="#800020" 
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  placeholder="Contraseña"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  style={styles.passwordInput}
                 />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-            </TouchableOpacity>
-            <Text style={styles.orText}>- O inicia sesión con -</Text>
-            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
-              <View style={styles.googleButtonContent}>
-                <Image
-                  source={{
-                    uri: 'https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png',
-                  }}
-                  style={styles.googleIcon}
-                />
-                <Text style={styles.googleButtonText}>Google</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)} 
+                  style={styles.passwordIcon}
+                >
+                  <Ionicons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={24} 
+                    color="#800020" 
+                  />
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-            <View style={styles.registerContainer}>
-              <Text>¿No tienes cuenta? </Text>
-              <TouchableOpacity onPress={() => router.push('/auth/register')}>
-                <Text style={styles.registerText}>Regístrate</Text>
+              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
               </TouchableOpacity>
+              <Text style={styles.orText}>- O inicia sesión con -</Text>
+              <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+                <View style={styles.googleButtonContent}>
+                  <Image
+                    source={{
+                      uri: 'https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png',
+                    }}
+                    style={styles.googleIcon}
+                  />
+                  <Text style={styles.googleButtonText}>Google</Text>
+                </View>
+              </TouchableOpacity>
+              <View style={styles.registerContainer}>
+                <Text>¿No tienes cuenta? </Text>
+                <TouchableOpacity onPress={() => router.push('/auth/register')}>
+                  <Text style={styles.registerText}>Regístrate</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-        
-        {/* Columna derecha: se oculta o se muestra abajo en móvil */}
-        {isMobile ? (
-          <View style={[styles.rightColumnMobile]} />
-        ) : (
-          <View style={styles.rightColumn} />
-        )}
-      </Animated.View>
-    </View>
+          
+          {/* Columna derecha: se oculta o se muestra abajo en móvil */}
+          {isMobile ? (
+            // No renderices la columna derecha en móvil
+            null
+          ) : (
+            <View style={styles.rightColumn} />
+          )}
+        </Animated.View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f6f6f6',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f6f6f6',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    width: '100%', // <-- Añade esto
+    padding: Platform.OS === 'web' ? 16 : 8,
   },
   row: {
     gap: 16, // Espacio entre las columnas
@@ -213,16 +228,16 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   rightColumnMobile: {
-    height: 80,
-    backgroundColor: '#800020',
-    borderRadius: 20,
-    marginTop: 16,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    marginTop: 0,
+    width: 0,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   appTitle: {
     fontSize: 28,
