@@ -1112,10 +1112,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   cardMobile: {
-    minHeight: 120,
-    maxHeight: 220,
+    minHeight: 300, // Aumentar altura mínima
+    maxHeight: 280, // Aumentar altura máxima
     borderRadius: 6,
-    width: 250,
+    width: '100%', // Cambiar de 250 a '100%' para usar todo el ancho disponible
+    marginHorizontal: 8, // Agregar margen horizontal
   },
   cardDesktop: {
     minHeight: 300,
@@ -1131,7 +1132,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardContentMobile: {
-    padding: 12,
+    padding: 16, // Aumentar padding para más espacio
+    minHeight: 120, // Asegurar altura mínima del contenido
   },
   title: {
     fontSize: 18,
@@ -1141,7 +1143,8 @@ const styles = StyleSheet.create({
   },
   titleMobile: {
     fontSize: 16,
-    marginBottom: 4,
+    marginBottom: 6, // Aumentar margen inferior
+    lineHeight: 20, // Agregar altura de línea
   },
   titleDesktop: {
     fontSize: 22,
@@ -1155,13 +1158,9 @@ const styles = StyleSheet.create({
   },
   descriptionMobile: {
     fontSize: 13,
-    marginBottom: 10,
+    marginBottom: 12, // Aumentar margen inferior
     lineHeight: 18,
-  },
-  descriptionDesktop: {
-    fontSize: 16,
-    lineHeight: 22,
-    marginBottom: 16,
+    minHeight: 36, // Asegurar espacio mínimo para 2 líneas
   },
   footer: {
     flexDirection: 'row',
@@ -1294,8 +1293,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContainerMobile: {
-    padding: 12,
-    paddingTop: 8,
+    padding: 16, // Aumentar padding de 12 a 16
+    paddingTop: 10,
+    alignItems: 'stretch', // Cambiar de 'center' a 'stretch' para usar todo el ancho
   },
   filterContainer: {
     marginBottom: 0,

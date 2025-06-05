@@ -14,12 +14,20 @@ import {
   Alert,
   TextInput,
   Animated,
-  Easing
+  Easing,
+  LayoutAnimation
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../lib/supabase';
 import { BlurView } from 'expo-blur';
+
+// Deshabilitar animaciones de Layout en Android
+if (Platform.OS === 'android') {
+  if (LayoutAnimation.configureNext) {
+    LayoutAnimation.configureNext = () => {};
+  }
+}
 
 export default function NegocioDetalle() {
   const { id } = useLocalSearchParams();
@@ -31,6 +39,7 @@ export default function NegocioDetalle() {
   const [userComment, setUserComment] = useState('');
   const [comentarios, setComentarios] = useState([]);
   const [expandedComment, setExpandedComment] = useState(false);
+  const [loadError, setLoadError] = useState(null); // Nuevo estado para errores
   const { width, height } = useWindowDimensions();
 
   // Animaciones
@@ -48,6 +57,11 @@ export default function NegocioDetalle() {
   const imageHeight = isDesktop ? 400 : isTablet ? 320 : 240;
 
   useEffect(() => {
+    console.log("🔍 [DEBUG] Iniciando componente NegocioDetalle");
+    console.log("🔍 [DEBUG] ID recibido:", id);
+    console.log("🔍 [DEBUG] Tipo de ID:", typeof id);
+    console.log("🔍 [DEBUG] ID válido:", !!id);
+
     // Animación de entrada
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -70,46 +84,197 @@ export default function NegocioDetalle() {
       })
     ]).start();
 
-    if (id) {
-      setLoading(true);
-      supabase
-        .from('negocios')
-        .select('*')
-        .eq('id', id)
-        .single()
-        .then(({ data, error }) => {
-          if (error) console.error("Error al cargar el negocio:", error);
-          setNegocio(data);
+    const loadBusinessData = async () => {
+      console.log("🔍 [DEBUG] Iniciando loadBusinessData");
+      
+      if (!id) {
+        console.error("❌ [ERROR] ID del negocio no válido:", id);
+        setLoadError("ID del negocio no válido");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log("🔍 [DEBUG] Estableciendo loading a true");
+        setLoading(true);
+        setLoadError(null);
+        
+        console.log("🔍 [DEBUG] Verificando conexión a Supabase...");
+        const { data: testConnection, error: testError } = await supabase
+          .from('negocios')
+          .select('count')
+          .limit(1);
+        
+        if (testError) {
+          console.error("❌ [ERROR] Error de conexión a Supabase:", testError);
+          setLoadError("Error de conexión a la base de datos");
+          throw new Error("Error de conexión a la base de datos");
+        }
+        console.log("✅ [SUCCESS] Conexión a Supabase exitosa");
+        
+        // Cargar datos del negocio
+        console.log("🔍 [DEBUG] Consultando negocio con ID:", id);
+        console.log("🔍 [DEBUG] Query: SELECT * FROM negocios WHERE id =", id);
+        
+        const { data: businessData, error: businessError } = await supabase
+          .from('negocios')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        console.log("🔍 [DEBUG] Respuesta de la consulta:");
+        console.log("🔍 [DEBUG] - Data:", businessData);
+        console.log("🔍 [DEBUG] - Error:", businessError);
+
+        if (businessError) {
+          console.error("❌ [ERROR] Error al cargar el negocio:", businessError);
+          console.error("❌ [ERROR] Código de error:", businessError.code);
+          console.error("❌ [ERROR] Mensaje:", businessError.message);
+          console.error("❌ [ERROR] Detalles:", businessError.details);
+          setLoadError(`Error al cargar el negocio: ${businessError.message}`);
+          throw businessError;
+        }
+
+        if (!businessData) {
+          console.error("❌ [ERROR] No se encontró el negocio con ID:", id);
+          console.log("🔍 [DEBUG] La consulta no devolvió datos");
+          setLoadError("No se encontró el negocio");
+          setNegocio(null);
           setLoading(false);
-        });
+          return;
+        }
 
-      // Cargar comentarios
-      supabase
-        .from('calificaciones')
-        .select('valor, comentario, usuario_id')
-        .eq('negocio_id', id)
-        .then(({ data }) => {
-          setComentarios(data || []);
-        });
-    }
+        console.log("✅ [SUCCESS] Datos del negocio cargados:");
+        console.log("🔍 [DEBUG] - Nombre:", businessData.nombre);
+        console.log("🔍 [DEBUG] - Descripción:", businessData.descripcion);
+        console.log("🔍 [DEBUG] - Imagen URL:", businessData.imagen_url);
+        console.log("🔍 [DEBUG] - Productos:", businessData.productos);
+        console.log("🔍 [DEBUG] - Calificación:", businessData.calificacion);
 
-    // Obtener usuario logueado y su calificación/comentario
-    supabase.auth.getUser().then(async ({ data }) => {
-      setUser(data?.user || null);
-      if (data?.user && id) {
-        const { data: calif } = await supabase
+        const cleanedBusiness = {
+          ...businessData,
+          productos: Array.isArray(businessData.productos) ? businessData.productos : [],
+          calificacion: typeof businessData.calificacion === 'number' ? businessData.calificacion : 0,
+          imagen_url: businessData.imagen_url || null,
+          horarios: businessData.horarios && typeof businessData.horarios === 'object' ? businessData.horarios : null
+        };
+
+        console.log("🔍 [DEBUG] Datos limpiados del negocio:", cleanedBusiness);
+        console.log("🔍 [DEBUG] Aplicando setNegocio...");
+        setNegocio(cleanedBusiness);
+        console.log("✅ [SUCCESS] setNegocio aplicado");
+
+        // Cargar comentarios
+        console.log("🔍 [DEBUG] Cargando comentarios para negocio ID:", id);
+        try {
+          const { data: commentsData, error: commentsError } = await supabase
+            .from('calificaciones')
+            .select('valor, comentario, usuario_id')
+            .eq('negocio_id', id);
+
+          if (commentsError) {
+            console.error("❌ [ERROR] Error al cargar comentarios:", commentsError);
+          } else {
+            console.log("✅ [SUCCESS] Comentarios cargados:", commentsData?.length || 0, "comentarios");
+            setComentarios(commentsData || []);
+          }
+        } catch (commentsErr) {
+          console.error("❌ [ERROR] Error inesperado al cargar comentarios:", commentsErr);
+          setComentarios([]);
+        }
+
+      } catch (error) {
+        console.error("❌ [ERROR] Error general al cargar datos del negocio:", error);
+        console.error("❌ [ERROR] Stack trace:", error.stack);
+        setLoadError(error.message || "Error desconocido");
+        setNegocio(null);
+      } finally {
+        console.log("🔍 [DEBUG] Estableciendo loading a false en finally");
+        // Usar setTimeout para asegurar que el estado se actualice
+        setTimeout(() => {
+          setLoading(false);
+          console.log("✅ [SUCCESS] Loading establecido a false");
+        }, 100);
+      }
+    };
+
+    const loadUserRating = async (userId) => {
+      console.log("🔍 [DEBUG] Cargando calificación del usuario:", userId);
+      
+      if (!userId || !id) {
+        console.log("🔍 [DEBUG] No se puede cargar calificación - UserId:", userId, "BusinessId:", id);
+        return;
+      }
+      
+      try {
+        const { data: userRatingData, error: ratingError } = await supabase
           .from('calificaciones')
           .select('valor, comentario')
           .eq('negocio_id', id)
-          .eq('usuario_id', data.user.id)
-          .single();
-        if (calif) {
-          setUserRating(calif.valor);
-          setUserComment(calif.comentario || '');
+          .eq('usuario_id', userId)
+          .maybeSingle();
+
+        if (!ratingError && userRatingData) {
+          console.log("✅ [SUCCESS] Calificación del usuario cargada:", userRatingData);
+          setUserRating(userRatingData.valor || 0);
+          setUserComment(userRatingData.comentario || '');
+        } else {
+          console.log("🔍 [DEBUG] No hay calificación previa del usuario");
+          setUserRating(0);
+          setUserComment('');
+        }
+      } catch (error) {
+        console.error("❌ [ERROR] Error al cargar calificación del usuario:", error);
+        setUserRating(0);
+        setUserComment('');
+      }
+    };
+
+    // ÚNICO listener para auth changes
+    console.log("🔍 [DEBUG] Configurando listener de autenticación");
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("🔍 [DEBUG] Auth state changed:", event);
+        console.log("🔍 [DEBUG] Session:", session ? "Existe" : "No existe");
+        
+        if (event === 'INITIAL_SESSION') {
+          // Manejar sesión inicial
+          if (session?.user) {
+            console.log("✅ [SUCCESS] Usuario encontrado en sesión inicial:", session.user.id);
+            setUser(session.user);
+            // await loadUserRating(session.user.id);
+          } else {
+            console.log("🔍 [DEBUG] No hay sesión inicial activa");
+            setUser(null);
+            setUserRating(0);
+            setUserComment('');
+          }
+        } else if (event === 'SIGNED_IN' && session?.user) {
+          console.log("✅ [SUCCESS] Usuario inició sesión:", session.user.id);
+          setUser(session.user);
+          // await loadUserRating(session.user.id);
+        } else if (event === 'SIGNED_OUT' || !session) {
+          console.log("🔍 [DEBUG] Usuario cerró sesión");
+          setUser(null);
+          setUserRating(0);
+          setUserComment('');
         }
       }
-    });
+    );
+
+    // Solo cargar datos del negocio una vez
+    console.log("🔍 [DEBUG] Ejecutando loadBusinessData");
+    loadBusinessData();
+
+    // Cleanup
+    return () => {
+      console.log("🔍 [DEBUG] Limpiando componente");
+      authListener?.subscription?.unsubscribe();
+    };
   }, [id]);
+
+  // Debug del estado actual
+  console.log("🔍 [RENDER] Estado actual - Loading:", loading, "Negocio:", !!negocio, "Error:", loadError);
 
   const animateStars = (rating) => {
     starAnimations.forEach((anim, index) => {
@@ -152,81 +317,150 @@ export default function NegocioDetalle() {
   };
 
   const handleSetRating = async (rating) => {
-    if (!user) return;
+    if (!user || !id) {
+      Alert.alert('Error', 'Debe iniciar sesión para calificar');
+      return;
+    }
     
-    animateStars(rating);
-    setUserRating(rating);
-
-    // Upsert calificación
-    const { error } = await supabase
-      .from('calificaciones')
-      .upsert([
-        {
-          negocio_id: id,
-          usuario_id: user.id,
-          valor: rating,
-          comentario: userComment
-        }
-      ], { onConflict: ['negocio_id', 'usuario_id'] });
-
-    if (error) {
-      Alert.alert('Error', 'No se pudo guardar la calificación');
+    if (rating < 1 || rating > 5) {
+      Alert.alert('Error', 'La calificación debe estar entre 1 y 5');
       return;
     }
 
-    // Recalcular promedio
-    const { data: calificaciones } = await supabase
-      .from('calificaciones')
-      .select('valor')
-      .eq('negocio_id', id);
+    try {
+      animateStars(rating);
+      setUserRating(rating);
 
-    if (calificaciones && calificaciones.length > 0) {
-      const promedio = calificaciones.reduce((acc, curr) => acc + curr.valor, 0) / calificaciones.length;
-      await supabase
-        .from('negocios')
-        .update({ calificacion: promedio })
-        .eq('id', id);
+      // Upsert calificación con mejor manejo de errores
+      const { error: upsertError } = await supabase
+        .from('calificaciones')
+        .upsert([
+          {
+            negocio_id: parseInt(id),
+            usuario_id: user.id,
+            valor: rating,
+            comentario: userComment || null
+          }
+        ], { 
+          onConflict: ['negocio_id', 'usuario_id'],
+          ignoreDuplicates: false 
+        });
 
-      setNegocio({ ...negocio, calificacion: promedio });
+      if (upsertError) {
+        console.error("Error al guardar calificación:", upsertError);
+        Alert.alert('Error', 'No se pudo guardar la calificación');
+        return;
+      }
+
+      // Recalcular promedio de manera más robusta
+      try {
+        const { data: allRatings, error: ratingsError } = await supabase
+          .from('calificaciones')
+          .select('valor')
+          .eq('negocio_id', id)
+          .not('valor', 'is', null);
+
+        if (ratingsError) {
+          console.error("Error al obtener calificaciones:", ratingsError);
+        } else if (allRatings && allRatings.length > 0) {
+          const validRatings = allRatings.filter(r => typeof r.valor === 'number' && r.valor > 0);
+          if (validRatings.length > 0) {
+            const promedio = validRatings.reduce((acc, curr) => acc + curr.valor, 0) / validRatings.length;
+            
+            const { error: updateError } = await supabase
+              .from('negocios')
+              .update({ calificacion: promedio })
+              .eq('id', id);
+
+            if (updateError) {
+              console.error("Error al actualizar promedio:", updateError);
+            } else {
+              setNegocio(prev => prev ? { ...prev, calificacion: promedio } : null);
+            }
+          }
+        }
+      } catch (avgError) {
+        console.error("Error al recalcular promedio:", avgError);
+      }
+
+      // Recargar comentarios
+      try {
+        const { data: newComments, error: commentsError } = await supabase
+          .from('calificaciones')
+          .select('valor, comentario, usuario_id')
+          .eq('negocio_id', id);
+
+        if (commentsError) {
+          console.error("Error al recargar comentarios:", commentsError);
+        } else {
+          setComentarios(newComments || []);
+        }
+      } catch (commentsError) {
+        console.error("Error inesperado al recargar comentarios:", commentsError);
+      }
+
+    } catch (error) {
+      console.error("Error general al calificar:", error);
+      Alert.alert('Error', 'Ocurrió un error inesperado');
     }
-
-    // Recargar comentarios
-    const { data: nuevosComentarios } = await supabase
-      .from('calificaciones')
-      .select('valor, comentario, usuario_id')
-      .eq('negocio_id', id);
-    setComentarios(nuevosComentarios || []);
   };
 
   const handleSaveComment = async () => {
-    if (!user) return;
-
-    const valor = typeof userRating === 'number' && !isNaN(userRating) ? userRating : 0;
-
-    const { error } = await supabase
-      .from('calificaciones')
-      .upsert([
-        {
-          negocio_id: Number(id),
-          usuario_id: user.id,
-          valor: valor,
-          comentario: userComment
-        }
-      ], { onConflict: ['negocio_id', 'usuario_id'] });
-
-    if (error) {
-      Alert.alert('Error', 'No se pudo guardar el comentario');
-      console.error(error);
+    if (!user || !id) {
+      Alert.alert('Error', 'Debe iniciar sesión para comentar');
       return;
     }
-    Alert.alert('¡Gracias!', 'Tu comentario ha sido guardado.');
 
-    // Recargar comentarios
-    const { data: nuevosComentarios } = await supabase
-      .from('calificaciones')
-      .select('valor, comentario, usuario_id')
-      .eq('negocio_id', id);
-    setComentarios(nuevosComentarios || []);
+    if (!userComment.trim()) {
+      Alert.alert('Error', 'El comentario no puede estar vacío');
+      return;
+    }
+
+    try {
+      const rating = typeof userRating === 'number' && userRating > 0 ? userRating : 1;
+
+      const { error } = await supabase
+        .from('calificaciones')
+        .upsert([
+          {
+            negocio_id: parseInt(id),
+            usuario_id: user.id,
+            valor: rating,
+            comentario: userComment.trim()
+          }
+        ], { 
+          onConflict: ['negocio_id', 'usuario_id'],
+          ignoreDuplicates: false 
+        });
+
+      if (error) {
+        console.error("Error al guardar comentario:", error);
+        Alert.alert('Error', 'No se pudo guardar el comentario');
+        return;
+      }
+
+      Alert.alert('¡Gracias!', 'Tu comentario ha sido guardado.');
+
+      // Recargar comentarios
+      try {
+        const { data: newComments, error: commentsError } = await supabase
+          .from('calificaciones')
+          .select('valor, comentario, usuario_id')
+          .eq('negocio_id', id);
+
+        if (commentsError) {
+          console.error("Error al recargar comentarios:", commentsError);
+        } else {
+          setComentarios(newComments || []);
+        }
+      } catch (commentsError) {
+        console.error("Error inesperado al recargar comentarios:", commentsError);
+      }
+
+    } catch (error) {
+      console.error("Error general al guardar comentario:", error);
+      Alert.alert('Error', 'Ocurrió un error inesperado');
+    }
   };
 
   const handleGoBack = () => {
@@ -238,22 +472,31 @@ export default function NegocioDetalle() {
   };
 
   if (loading) {
+    console.log("🔍 [DEBUG] Mostrando estado de carga - Loading:", loading);
     return (
       <View style={styles.loadingContainer}>
         <Animated.View style={[styles.loadingContent, { opacity: fadeAnim }]}>
           <ActivityIndicator size="large" color="#FF7D1A" />
           <Text style={styles.loadingText}>Cargando información del negocio...</Text>
+          {loadError && (
+            <Text style={[styles.loadingText, { color: 'red', marginTop: 10 }]}>
+              Error: {loadError}
+            </Text>
+          )}
         </Animated.View>
       </View>
     );
   }
 
   if (!negocio) {
+    console.log("❌ [ERROR] No hay datos del negocio para mostrar - Negocio:", negocio, "Error:", loadError);
     return (
       <View style={styles.errorContainer}>
         <Animated.View style={[styles.errorContent, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
           <Ionicons name="alert-circle" size={64} color="#FF3B30" />
-          <Text style={styles.errorText}>No se pudo cargar la información</Text>
+          <Text style={styles.errorText}>
+            {loadError || "No se pudo cargar la información"}
+          </Text>
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={handleGoBack}
@@ -264,6 +507,10 @@ export default function NegocioDetalle() {
       </View>
     );
   }
+
+  console.log("✅ [SUCCESS] Renderizando componente con datos del negocio");
+  console.log("🔍 [DEBUG] Imagen URL final:", negocio.imagen_url);
+  console.log("🔍 [DEBUG] Datos completos del negocio:", JSON.stringify(negocio, null, 2));
 
   const containerStyle = isDesktop ? [styles.container, styles.desktopContainer] : styles.container;
 
@@ -442,18 +689,19 @@ export default function NegocioDetalle() {
                   </View>
 
                   {/* Productos */}
-                  {negocio.productos && Array.isArray(negocio.productos) && (
+                  {negocio?.productos && Array.isArray(negocio.productos) && negocio.productos.length > 0 && (
                     <View style={styles.section}>
                       <Text style={[styles.sectionTitle, isTablet && styles.sectionTitleTablet]}>
                         Productos
                       </Text>
-                      {negocio.productos.length === 0 ? (
-                        <Text style={styles.emptyStateText}>No hay productos registrados</Text>
-                      ) : (
-                        <View style={[styles.productsList, isTablet && styles.productsListTablet]}>
-                          {negocio.productos.map((prod, idx) => (
+                      <View style={[styles.productsList, isTablet && styles.productsListTablet]}>
+                        {negocio.productos.map((prod, idx) => {
+                          // Validar que el producto tenga datos válidos
+                          if (!prod || typeof prod !== 'object') return null;
+                          
+                          return (
                             <Animated.View 
-                              key={idx} 
+                              key={`product-${idx}-${prod.nombre || 'unknown'}`}
                               style={[
                                 styles.productCard,
                                 isTablet && styles.productCardTablet,
@@ -469,15 +717,15 @@ export default function NegocioDetalle() {
                               ]}
                             >
                               <Text style={[styles.productName, isTablet && styles.productNameTablet]}>
-                                {prod.nombre}
+                                {prod.nombre || 'Producto sin nombre'}
                               </Text>
                               <Text style={[styles.productPrice, isTablet && styles.productPriceTablet]}>
-                                ${prod.precio?.toFixed(2)}
+                                ${typeof prod.precio === 'number' ? prod.precio.toFixed(2) : '0.00'}
                               </Text>
                             </Animated.View>
-                          ))}
-                        </View>
-                      )}
+                          );
+                        })}
+                      </View>
                     </View>
                   )}
 
@@ -486,43 +734,53 @@ export default function NegocioDetalle() {
                     <Text style={[styles.sectionTitle, isTablet && styles.sectionTitleTablet]}>
                       Comentarios
                     </Text>
-                    {comentarios.length === 0 ? (
+                    {!comentarios || comentarios.length === 0 ? (
                       <Text style={styles.emptyStateText}>No hay comentarios aún.</Text>
                     ) : (
                       <View style={styles.commentsList}>
-                        {comentarios.map((c, idx) => (
-                          <Animated.View 
-                            key={idx} 
-                            style={[
-                              styles.commentCard,
-                              isTablet && styles.commentCardTablet,
-                              {
-                                opacity: fadeAnim,
-                                transform: [{
-                                  translateY: slideAnim.interpolate({
-                                    inputRange: [0, 50],
-                                    outputRange: [0, idx * 10],
-                                  })
-                                }]
-                              }
-                            ]}
-                          >
-                            <View style={styles.commentRating}>
-                              {Array(5).fill(0).map((_, i) => (
-                                <Ionicons
-                                  key={i}
-                                  name={i < c.valor ? "star" : "star-outline"}
-                                  size={16}
-                                  color="#FFD700"
-                                  style={styles.commentStar}
-                                />
-                              ))}
-                            </View>
-                            <Text style={[styles.commentText, isTablet && styles.commentTextTablet]}>
-                              {c.comentario || <Text style={styles.noComment}>Sin comentario</Text>}
-                            </Text>
-                          </Animated.View>
-                        ))}
+                        {comentarios.map((c, idx) => {
+                          // Validar que el comentario tenga datos válidos
+                          if (!c || typeof c !== 'object') return null;
+                          
+                          const rating = typeof c.valor === 'number' ? Math.max(0, Math.min(5, c.valor)) : 0;
+                          
+                          return (
+                            <Animated.View 
+                              key={`comment-${idx}-${c.usuario_id || 'unknown'}`}
+                              style={[
+                                styles.commentCard,
+                                isTablet && styles.commentCardTablet,
+                                {
+                                  opacity: fadeAnim,
+                                  transform: [{
+                                    translateY: slideAnim.interpolate({
+                                      inputRange: [0, 50],
+                                      outputRange: [0, idx * 10],
+                                    })
+                                  }]
+                                }
+                              ]}
+                            >
+                              <View style={styles.commentRating}>
+                                {Array(5).fill(0).map((_, i) => (
+                                  <Ionicons
+                                    key={`star-${i}`}
+                                    name={i < rating ? "star" : "star-outline"}
+                                    size={16}
+                                    color="#FFD700"
+                                    style={styles.commentStar}
+                                  />
+                                ))}
+                              </View>
+                              <Text style={[styles.commentText, isTablet && styles.commentTextTablet]}>
+                                {c.comentario && c.comentario.trim() ? 
+                                  c.comentario : 
+                                  <Text style={styles.noComment}>Sin comentario</Text>
+                                }
+                              </Text>
+                            </Animated.View>
+                          );
+                        })}
                       </View>
                     )}
                   </View>

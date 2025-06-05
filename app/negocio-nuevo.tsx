@@ -32,6 +32,7 @@ export default function NegocioPage() {
   const [descripcion, setDescripcion] = useState('');
   const [ubicacion, setUbicacion] = useState('');
   const [imagenLocal, setImagenLocal] = useState<string | null>(null);
+  const [imagenBase64, setImagenBase64] = useState<string | null>(null); // Agregar esto
   const [productoNombre, setProductoNombre] = useState('');
   const [productoPrecio, setProductoPrecio] = useState('');
   const [productos, setProductos] = useState<{ nombre: string; precio: number }[]>([]);
@@ -46,6 +47,7 @@ export default function NegocioPage() {
   const [tab, setTab] = useState<'mis-negocios' | 'nuevo'>('mis-negocios');
   const [selectedNegocio, setSelectedNegocio] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showTipoModal, setShowTipoModal] = useState(false);
 
   const [horarios, setHorarios] = useState<{ 
     [dia: string]: { 
@@ -130,6 +132,7 @@ export default function NegocioPage() {
       allowsEditing: true,
       quality: 0.7,
       aspect: [4, 3],
+      base64: true, // Obtener base64 directamente aquí
     });
     
     if (!result.canceled && result.assets.length > 0) {
@@ -147,23 +150,64 @@ export default function NegocioPage() {
       ]).start();
       
       setImagenLocal(result.assets[0].uri);
+      setImagenBase64(result.assets[0].base64 || null); // Guardar el base64
     }
   };
 
   const subirImagen = async (): Promise<string | null> => {
-    if (!imagenLocal) return null;
-    const response = await fetch(imagenLocal);
-    const blob = await response.blob();
-    const fileName = `negocios_${Date.now()}.jpg`;
-    const { error } = await supabase.storage
-      .from('negocios')
-      .upload(fileName, blob, { contentType: 'image/jpeg' });
-    if (error) {
-      Alert.alert('Error al subir imagen', error.message);
+    if (!imagenLocal || !imagenBase64) return null;
+    
+    try {
+      console.log('📸 Iniciando subida de imagen...');
+      
+      const fileName = `negocio_${userId}_${Date.now()}.jpg`;
+      console.log('📸 Subiendo archivo:', fileName);
+      
+      // Usar el base64 que ya tenemos guardado
+      const binaryString = atob(imagenBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Subir usando Uint8Array directamente
+      const { data, error } = await supabase.storage
+        .from('negocios')
+        .upload(fileName, bytes, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+        
+      if (error) {
+        console.error('❌ Error de Supabase:', error);
+        Alert.alert('Error al subir imagen', error.message);
+        return null;
+      }
+      
+      console.log('✅ Imagen subida exitosamente:', data.path);
+      
+      const { data: urlData } = supabase.storage
+        .from('negocios')
+        .getPublicUrl(fileName);
+        
+      console.log('✅ URL pública generada:', urlData.publicUrl);
+      return urlData.publicUrl;
+      
+    } catch (error) {
+      console.error('💥 Error completo:', error);
+      
+      if (error.message.includes('Network request failed')) {
+        Alert.alert(
+          'Error de conexión', 
+          'Verifica tu conexión a internet y vuelve a intentar'
+        );
+      } else {
+        Alert.alert('Error', 'No se pudo subir la imagen. Intenta de nuevo.');
+      }
+      
       return null;
     }
-    const { data } = supabase.storage.from('negocios').getPublicUrl(fileName);
-    return data.publicUrl;
   };
 
   const agregarProducto = () => {
@@ -185,6 +229,7 @@ export default function NegocioPage() {
     setDescripcion('');
     setUbicacion('');
     setImagenLocal(null);
+    setImagenBase64(null); // Limpiar también el base64
     setProductoNombre('');
     setProductoPrecio('');
     setProductos([]);
@@ -202,6 +247,8 @@ export default function NegocioPage() {
   };
 
   const handleSubmit = async () => {
+    console.log('🚀 Iniciando envío de negocio...');
+    
     if (!nombre || !userId || !descripcion || !ubicacion || !telefono || !tipoNegocio) {
       Alert.alert('Faltan datos obligatorios');
       return;
@@ -221,37 +268,51 @@ export default function NegocioPage() {
     }
 
     setLoading(true);
-    let urlImagen = '';
-    if (imagenLocal) {
-      const url = await subirImagen();
-      if (!url) {
-        setLoading(false);
-        return;
+    
+    try {
+      let urlImagen = '';
+      if (imagenLocal) {
+        console.log('📸 Procesando imagen...');
+        const url = await subirImagen();
+        if (!url) {
+          console.log('❌ No se pudo subir la imagen');
+          setLoading(false);
+          return;
+        }
+        urlImagen = url;
+        console.log('✅ Imagen procesada:', urlImagen);
       }
-      urlImagen = url;
-    }
 
-    const { error } = await supabase.from('negocios').insert({
-      nombre,
-      descripcion,
-      ubicacion,
-      imagen_url: urlImagen,
-      productos,
-      user_id: userId,
-      aprobado: false,
-      telefono,
-      horarios,
-      tipo: tipoNegocio, 
-    });
+      console.log('💾 Guardando negocio...');
+      const { error } = await supabase.from('negocios').insert({
+        nombre,
+        descripcion,
+        ubicacion,
+        imagen_url: urlImagen,
+        productos,
+        user_id: userId,
+        aprobado: false,
+        telefono,
+        horarios,
+        tipo: tipoNegocio, 
+      });
 
-    setLoading(false);
-    if (error) {
-      Alert.alert('Error al guardar', error.message);
-    } else {
-      Alert.alert('Negocio enviado', 'Esperando aprobación del administrador');
-      limpiarFormulario();
-      fetchMisNegocios(userId!);
-      setTab('mis-negocios');
+      if (error) {
+        console.error('❌ Error guardando:', error);
+        Alert.alert('Error al guardar', error.message);
+      } else {
+        console.log('✅ Negocio guardado exitosamente');
+        Alert.alert('Negocio enviado', 'Esperando aprobación del administrador');
+        limpiarFormulario();
+        await fetchMisNegocios(userId!);
+        setTab('mis-negocios');
+      }
+    } catch (error) {
+      console.error('💥 Error inesperado:', error);
+      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+    } finally {
+      console.log('🏁 Finalizando proceso...');
+      setLoading(false);
     }
   };
 
@@ -458,21 +519,15 @@ export default function NegocioPage() {
 
               <View style={styles.inputContainer}>
                 <MaterialIcons name="category" size={20} color="#555" style={styles.inputIcon} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#AAA', fontSize: 13, marginBottom: 2 }}>Tipo de negocio</Text>
-                  <View style={styles.selectContainer}>
-                    <select
-                      value={tipoNegocio}
-                      onChange={e => setTipoNegocio(e.target.value)}
-                      style={styles.select}
-                    >
-                      <option value="" disabled>Selecciona una opción</option>
-                      {CATEGORIAS.map(tipo => (
-                        <option key={tipo} value={tipo}>{tipo}</option>
-                      ))}
-                    </select>
-                  </View>
-                </View>
+                <TouchableOpacity 
+                  style={styles.customSelect}
+                  onPress={() => setShowTipoModal(true)}
+                >
+                  <Text style={[styles.selectText, !tipoNegocio && styles.selectPlaceholder]}>
+                    {tipoNegocio || "Selecciona una opción"}
+                  </Text>
+                  <MaterialIcons name="arrow-drop-down" size={24} color="#666" />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.inputContainer}>
@@ -784,6 +839,37 @@ export default function NegocioPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal para seleccionar tipo */}
+      <Modal visible={showTipoModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.selectModal}>
+            <View style={styles.selectModalHeader}>
+              <Text style={styles.selectModalTitle}>Seleccionar tipo de negocio</Text>
+              <TouchableOpacity onPress={() => setShowTipoModal(false)}>
+                <Ionicons name="close" size={24} color="#800020" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {CATEGORIAS.map(tipo => (
+                <TouchableOpacity
+                  key={tipo}
+                  style={styles.selectOption}
+                  onPress={() => {
+                    setTipoNegocio(tipo);
+                    setShowTipoModal(false);
+                  }}
+                >
+                  <Text style={styles.selectOptionText}>{tipo}</Text>
+                  {tipoNegocio === tipo && (
+                    <Ionicons name="checkmark" size={20} color="#800020" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1085,19 +1171,52 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
-  selectContainer: {
-    borderWidth: 0,
-    borderRadius: 6,
+  customSelect: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
     backgroundColor: '#FFF',
-    overflow: 'hidden',
   },
-  select: {
-    width: '100%',
-    padding: 10,
+  selectText: {
     fontSize: 16,
     color: '#333',
-    border: 'none',
-    background: 'transparent',
+  },
+  selectPlaceholder: {
+    color: '#AAA',
+  },
+  selectModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '70%',
+    marginHorizontal: '5%',
+  },
+  selectModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  selectModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  selectOptionText: {
+    fontSize: 16,
+    color: '#333',
   },
   rowContainer: {
     flexDirection: 'row',
@@ -1357,5 +1476,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#800020',
     fontWeight: 'bold',
+  },
+  selectModal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '70%',
+    marginHorizontal: '5%',
+  },
+  selectModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  selectModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  selectOptionText: {
+    fontSize: 16,
+    color: '#333',
   },
 });

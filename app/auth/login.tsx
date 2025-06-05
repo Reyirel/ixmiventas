@@ -13,14 +13,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   
-  // Usar useWindowDimensions en lugar de Dimensions.get
   const { width, height } = useWindowDimensions();
   const [isMobile, setIsMobile] = useState(width < 768);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Actualizar isMobile cuando cambian las dimensiones
   useEffect(() => {
     setIsMobile(width < 768);
   }, [width]);
@@ -56,7 +54,6 @@ export default function Login() {
       return;
     }
 
-    // Obtener el perfil del usuario
     const { data: perfilData, error: perfilError } = await supabase
       .from('perfiles')
       .select('tipo_usuario')
@@ -68,7 +65,6 @@ export default function Login() {
       return;
     }
 
-    // Redirigir según el tipo de usuario
     if (perfilData.tipo_usuario === 'admin') {
       router.replace('/admin');
     } else if (perfilData.tipo_usuario === 'negocio') {
@@ -91,6 +87,98 @@ export default function Login() {
     }
   };
 
+  // Renderizado para móvil
+  if (isMobile) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.mobileContainer}>
+          <Animated.View
+            style={[
+              styles.mobileContent,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              }
+            ]}
+          >
+            {/* Header móvil con gradiente */}
+            <View style={styles.mobileHeader}>
+              <Text style={styles.mobileAppTitle}>
+                Compra en Ixmiquilpan 
+              </Text>
+              <Text style={styles.mobileTitulo2}>
+                Tai ha Ntsotk ani
+              </Text>
+            </View>
+
+            {/* Formulario móvil */}
+            <View style={styles.mobileForm}>
+              <Text style={styles.mobileLoginTitle}>Iniciar sesión</Text>
+              <Text style={styles.mobileSubtitle}>Ingresa tus credenciales para continuar</Text>
+              
+              <TextInput
+                placeholder="Correo electrónico"
+                value={email}
+                onChangeText={setEmail}
+                style={styles.mobileInput}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor="#999"
+              />
+              
+              <View style={styles.mobilePasswordContainer}>
+                <TextInput
+                  placeholder="Contraseña"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  style={styles.mobilePasswordInput}
+                  placeholderTextColor="#999"
+                />
+                <TouchableOpacity 
+                  onPress={() => setShowPassword(!showPassword)} 
+                  style={styles.mobilePasswordIcon}
+                >
+                  <Ionicons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={22} 
+                    color="#800020" 
+                  />
+                </TouchableOpacity>
+              </View>
+              
+              <TouchableOpacity style={styles.mobileLoginButton} onPress={handleLogin}>
+                <Text style={styles.mobileLoginButtonText}>Iniciar Sesión</Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.mobileOrText}>- O inicia sesión con -</Text>
+              
+              <TouchableOpacity style={styles.mobileGoogleButton} onPress={handleGoogleLogin}>
+                <View style={styles.mobileGoogleButtonContent}>
+                  <Image
+                    source={{
+                      uri: 'https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png',
+                    }}
+                    style={styles.mobileGoogleIcon}
+                  />
+                  <Text style={styles.mobileGoogleButtonText}>Google</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <View style={styles.mobileRegisterContainer}>
+                <Text style={styles.mobileRegisterText}>¿No tienes cuenta? </Text>
+                <TouchableOpacity onPress={() => router.push('/auth/register')}>
+                  <Text style={styles.mobileRegisterLink}>Regístrate</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Renderizado para desktop/tablet (código existente)
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -100,33 +188,24 @@ export default function Login() {
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
-              flexDirection: isMobile ? 'column' : 'row',
-              width: '100%', // <-- Cambia esto
-              maxWidth: !isMobile ? 1200 : undefined, // Solo limita en desktop/tablet
-              height: !isMobile ? "75%" : undefined, // Solo limita en desktop/tablet
+              flexDirection: 'row',
+              width: '100%',
+              maxWidth: 1200,
+              height: "75%",
               alignSelf: 'center'
             }
           ]}
         >
-          <View style={[
-            styles.leftColumn,
-            isMobile && { width: '100%' }
-          ]}>
-            <View style={[
-              styles.titleRow,
-              isMobile && { paddingHorizontal: 16, paddingTop: 24 }
-            ]}>
-              <Text style={[styles.appTitle, isMobile && { fontSize: 24 }]}>
+          <View style={styles.leftColumn}>
+            <View style={styles.titleRow}>
+              <Text style={styles.appTitle}>
                 Compra en Ixmiquilpan 
               </Text>
-              <Text style={[styles.titulo2, isMobile && { fontSize: 22, marginBottom: 20 }]}>
+              <Text style={styles.titulo2}>
                 Tai ha Ntsotk ani
               </Text>
             </View>
-            <View style={[
-              styles.formRow,
-              isMobile && { padding: 20 }
-            ]}>
+            <View style={styles.formRow}>
               <Text style={styles.loginTitle}>Iniciar sesión</Text>
               <Text style={styles.subtitle}>Ingresa tus credenciales para continuar</Text>
               <TextInput
@@ -180,13 +259,7 @@ export default function Login() {
             </View>
           </View>
           
-          {/* Columna derecha: se oculta o se muestra abajo en móvil */}
-          {isMobile ? (
-            // No renderices la columna derecha en móvil
-            null
-          ) : (
-            <View style={styles.rightColumn} />
-          )}
+          <View style={styles.rightColumn} />
         </Animated.View>
       </View>
     </SafeAreaView>
@@ -203,11 +276,157 @@ const styles = StyleSheet.create({
     backgroundColor: '#f6f6f6',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%', // <-- Añade esto
+    width: '100%',
     padding: Platform.OS === 'web' ? 16 : 8,
   },
+  
+  // Estilos móviles
+  mobileContainer: {
+    flex: 1,
+    backgroundColor: '#f6f6f6',
+  },
+  mobileContent: {
+    flex: 1,
+  },
+  mobileHeader: {
+    backgroundColor: '#800020',
+    paddingTop: 40,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  mobileAppTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  mobileTitulo2: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#E1CB7A',
+    textAlign: 'center',
+  },
+  mobileForm: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: -20,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+  },
+  mobileLoginTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  mobileSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  mobileInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: '#f9f9f9',
+    fontSize: 16,
+  },
+  mobilePasswordContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    marginBottom: 24,
+    backgroundColor: '#f9f9f9',
+    alignItems: 'center',
+  },
+  mobilePasswordInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 16,
+  },
+  mobilePasswordIcon: {
+    paddingHorizontal: 16,
+  },
+  mobileLoginButton: {
+    backgroundColor: '#800020',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#800020',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  mobileLoginButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  mobileOrText: {
+    textAlign: 'center',
+    marginVertical: 16,
+    color: '#888',
+    fontSize: 14,
+  },
+  mobileGoogleButton: {
+    backgroundColor: '#fff',
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  mobileGoogleButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileGoogleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+  },
+  mobileGoogleButtonText: {
+    color: '#333',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  mobileRegisterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  mobileRegisterText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  mobileRegisterLink: {
+    color: '#800020',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  // Estilos desktop existentes
   row: {
-    gap: 16, // Espacio entre las columnas
+    gap: 16,
     backgroundColor: 'transparent',
   },
   leftColumn: {
@@ -226,18 +445,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
-  },
-  rightColumnMobile: {
-    height: 0,
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-    marginTop: 0,
-    width: 0,
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
   },
   appTitle: {
     fontSize: 28,
@@ -340,12 +547,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     color: '#E1CB7A',
     textAlign: 'left',
-  },
-  titleContainer: {
-    marginBottom: 20,
-  },
-  formContainer: {
-    marginTop: 20,
   },
   titleRow: {
     backgroundColor: 'transparent',
