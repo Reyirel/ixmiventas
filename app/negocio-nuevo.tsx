@@ -94,13 +94,26 @@ export default function NegocioPage() {
 
     // Verificar usuario y cargar negocios
     const getUser = async () => {
+      console.log('🔐 Verificando usuario...');
+      
       const { data } = await supabase.auth.getUser();
+      
+      console.log('👤 Datos de usuario:', {
+        user: data.user ? {
+          id: data.user.id,
+          email: data.user.email,
+          role: data.user.role
+        } : null
+      });
+      
       if (!data.user) {
+        console.log('❌ Usuario no autenticado, redirigiendo...');
         Alert.alert('Debes iniciar sesión');
         router.replace('/auth/login');
       } else {
+        console.log('✅ Usuario autenticado:', data.user.id);
         setUserId(data.user.id);
-        fetchMisNegocios(data.user.id);
+        await fetchMisNegocios(data.user.id);
       }
     };
     getUser();
@@ -322,6 +335,26 @@ export default function NegocioPage() {
   };
 
   const eliminarNegocio = async (id: number) => {
+    console.log('🗑️ Iniciando eliminación de negocio...');
+    console.log('🔍 ID del negocio a eliminar:', id);
+    console.log('👤 Usuario actual ID:', userId);
+    
+    // Verificar que el negocio existe y pertenece al usuario
+    const negocioAEliminar = misNegocios.find(negocio => negocio.id === id);
+    console.log('📄 Negocio encontrado:', negocioAEliminar);
+    
+    if (negocioAEliminar) {
+      console.log('✅ Negocio pertenece al usuario:', negocioAEliminar.user_id === userId);
+      console.log('📋 Datos del negocio:', {
+        id: negocioAEliminar.id,
+        nombre: negocioAEliminar.nombre,
+        user_id: negocioAEliminar.user_id,
+        aprobado: negocioAEliminar.aprobado
+      });
+    } else {
+      console.log('❌ No se encontró el negocio en la lista local');
+    }
+
     Alert.alert(
       'Confirmar eliminación',
       '¿Estás seguro de eliminar este negocio?',
@@ -331,16 +364,75 @@ export default function NegocioPage() {
           text: 'Eliminar', 
           style: 'destructive',
           onPress: async () => {
-            const { error } = await supabase
-              .from('negocios')
-              .delete()
-              .eq('id', id);
+            console.log('🚀 Ejecutando eliminación...');
             
-            if (error) {
-              Alert.alert('Error', 'No se pudo eliminar el negocio');
-            } else {
-              Alert.alert('Éxito', 'Negocio eliminado correctamente');
-              fetchMisNegocios(userId!);
+            try {
+              // Primero verificar los permisos de la tabla
+              console.log('🔐 Verificando permisos de eliminación...');
+              
+              const { data: checkData, error: checkError } = await supabase
+                .from('negocios')
+                .select('*')
+                .eq('id', id)
+                .eq('user_id', userId)
+                .single();
+              
+              console.log('📊 Resultado de verificación:', { checkData, checkError });
+              
+              if (checkError) {
+                console.error('❌ Error al verificar el negocio:', checkError);
+                Alert.alert('Error', `No se pudo verificar el negocio: ${checkError.message}`);
+                return;
+              }
+              
+              if (!checkData) {
+                console.error('❌ El negocio no existe o no te pertenece');
+                Alert.alert('Error', 'El negocio no existe o no tienes permisos para eliminarlo');
+                return;
+              }
+              
+              console.log('✅ Negocio verificado, procediendo con la eliminación...');
+              
+              const { data, error } = await supabase
+                .from('negocios')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', userId); // Doble verificación
+              
+              console.log('📤 Resultado de eliminación:', { data, error });
+              
+              if (error) {
+                console.error('❌ Error de Supabase al eliminar:', error);
+                console.error('📋 Detalles del error:', {
+                  message: error.message,
+                  details: error.details,
+                  hint: error.hint,
+                  code: error.code
+                });
+                Alert.alert('Error', `No se pudo eliminar el negocio: ${error.message}`);
+              } else {
+                console.log('✅ Negocio eliminado exitosamente');
+                
+                // Actualizar inmediatamente la lista local
+                console.log('🔄 Actualizando lista local inmediatamente...');
+                setMisNegocios(prevNegocios => prevNegocios.filter(negocio => negocio.id !== id));
+                
+                // Mostrar mensaje de éxito DESPUÉS de actualizar la lista
+                Alert.alert('Éxito', 'Negocio eliminado correctamente', [
+                  {
+                    text: 'OK',
+                    onPress: async () => {
+                      // Recargar desde el servidor para confirmar
+                      console.log('🔄 Recargando desde servidor...');
+                      await fetchMisNegocios(userId!);
+                      console.log('✅ Lista actualizada desde servidor');
+                    }
+                  }
+                ]);
+              }
+            } catch (error) {
+              console.error('💥 Error inesperado durante eliminación:', error);
+              Alert.alert('Error', 'Ocurrió un error inesperado al eliminar el negocio');
             }
           }
         }

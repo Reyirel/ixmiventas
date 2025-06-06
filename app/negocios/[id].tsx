@@ -39,7 +39,7 @@ export default function NegocioDetalle() {
   const [userComment, setUserComment] = useState('');
   const [comentarios, setComentarios] = useState([]);
   const [expandedComment, setExpandedComment] = useState(false);
-  const [loadError, setLoadError] = useState(null); // Nuevo estado para errores
+  const [loadError, setLoadError] = useState(null);
   const { width, height } = useWindowDimensions();
 
   // Animaciones
@@ -57,11 +57,6 @@ export default function NegocioDetalle() {
   const imageHeight = isDesktop ? 400 : isTablet ? 320 : 240;
 
   useEffect(() => {
-    console.log("🔍 [DEBUG] Iniciando componente NegocioDetalle");
-    console.log("🔍 [DEBUG] ID recibido:", id);
-    console.log("🔍 [DEBUG] Tipo de ID:", typeof id);
-    console.log("🔍 [DEBUG] ID válido:", !!id);
-
     // Animación de entrada
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -85,124 +80,89 @@ export default function NegocioDetalle() {
     ]).start();
 
     const loadBusinessData = async () => {
-      console.log("🔍 [DEBUG] Iniciando loadBusinessData");
-      
       if (!id) {
-        console.error("❌ [ERROR] ID del negocio no válido:", id);
         setLoadError("ID del negocio no válido");
         setLoading(false);
         return;
       }
 
       try {
-        console.log("🔍 [DEBUG] Estableciendo loading a true");
         setLoading(true);
         setLoadError(null);
         
-        console.log("🔍 [DEBUG] Verificando conexión a Supabase...");
         const { data: testConnection, error: testError } = await supabase
           .from('negocios')
           .select('count')
           .limit(1);
         
         if (testError) {
-          console.error("❌ [ERROR] Error de conexión a Supabase:", testError);
           setLoadError("Error de conexión a la base de datos");
           throw new Error("Error de conexión a la base de datos");
         }
-        console.log("✅ [SUCCESS] Conexión a Supabase exitosa");
         
         // Cargar datos del negocio
-        console.log("🔍 [DEBUG] Consultando negocio con ID:", id);
-        console.log("🔍 [DEBUG] Query: SELECT * FROM negocios WHERE id =", id);
-        
         const { data: businessData, error: businessError } = await supabase
           .from('negocios')
           .select('*')
           .eq('id', id)
           .single();
 
-        console.log("🔍 [DEBUG] Respuesta de la consulta:");
-        console.log("🔍 [DEBUG] - Data:", businessData);
-        console.log("🔍 [DEBUG] - Error:", businessError);
-
-        if (businessError) {
-          console.error("❌ [ERROR] Error al cargar el negocio:", businessError);
-          console.error("❌ [ERROR] Código de error:", businessError.code);
-          console.error("❌ [ERROR] Mensaje:", businessError.message);
-          console.error("❌ [ERROR] Detalles:", businessError.details);
-          setLoadError(`Error al cargar el negocio: ${businessError.message}`);
-          throw businessError;
-        }
-
-        if (!businessData) {
-          console.error("❌ [ERROR] No se encontró el negocio con ID:", id);
-          console.log("🔍 [DEBUG] La consulta no devolvió datos");
-          setLoadError("No se encontró el negocio");
-          setNegocio(null);
-          setLoading(false);
+        if (businessError || !businessData) {
+          setLoadError(`Error al cargar el negocio: ${businessError?.message || 'No encontrado'}`);
           return;
         }
 
-        console.log("✅ [SUCCESS] Datos del negocio cargados:");
-        console.log("🔍 [DEBUG] - Nombre:", businessData.nombre);
-        console.log("🔍 [DEBUG] - Descripción:", businessData.descripcion);
-        console.log("🔍 [DEBUG] - Imagen URL:", businessData.imagen_url);
-        console.log("🔍 [DEBUG] - Productos:", businessData.productos);
-        console.log("🔍 [DEBUG] - Calificación:", businessData.calificacion);
+        // Calcular promedio usando función SQL
+        let promedioCalculado = 0;
+        try {
+          const { data: promedio, error: promedioError } = await supabase
+            .rpc('calcular_promedio_negocio', { 
+              negocio_id_param: parseInt(id) 
+            });
+
+          if (!promedioError) {
+            promedioCalculado = promedio || 0;
+          }
+        } catch (promedioErr) {
+          promedioCalculado = 0;
+        }
 
         const cleanedBusiness = {
           ...businessData,
           productos: Array.isArray(businessData.productos) ? businessData.productos : [],
-          calificacion: typeof businessData.calificacion === 'number' ? businessData.calificacion : 0,
+          calificacion: promedioCalculado,
           imagen_url: businessData.imagen_url || null,
           horarios: businessData.horarios && typeof businessData.horarios === 'object' ? businessData.horarios : null
         };
 
-        console.log("🔍 [DEBUG] Datos limpiados del negocio:", cleanedBusiness);
-        console.log("🔍 [DEBUG] Aplicando setNegocio...");
         setNegocio(cleanedBusiness);
-        console.log("✅ [SUCCESS] setNegocio aplicado");
 
         // Cargar comentarios
-        console.log("🔍 [DEBUG] Cargando comentarios para negocio ID:", id);
         try {
           const { data: commentsData, error: commentsError } = await supabase
             .from('calificaciones')
             .select('valor, comentario, usuario_id')
             .eq('negocio_id', id);
 
-          if (commentsError) {
-            console.error("❌ [ERROR] Error al cargar comentarios:", commentsError);
-          } else {
-            console.log("✅ [SUCCESS] Comentarios cargados:", commentsData?.length || 0, "comentarios");
+          if (!commentsError) {
             setComentarios(commentsData || []);
           }
         } catch (commentsErr) {
-          console.error("❌ [ERROR] Error inesperado al cargar comentarios:", commentsErr);
           setComentarios([]);
         }
 
       } catch (error) {
-        console.error("❌ [ERROR] Error general al cargar datos del negocio:", error);
-        console.error("❌ [ERROR] Stack trace:", error.stack);
         setLoadError(error.message || "Error desconocido");
         setNegocio(null);
       } finally {
-        console.log("🔍 [DEBUG] Estableciendo loading a false en finally");
-        // Usar setTimeout para asegurar que el estado se actualice
         setTimeout(() => {
           setLoading(false);
-          console.log("✅ [SUCCESS] Loading establecido a false");
         }, 100);
       }
     };
 
     const loadUserRating = async (userId) => {
-      console.log("🔍 [DEBUG] Cargando calificación del usuario:", userId);
-      
       if (!userId || !id) {
-        console.log("🔍 [DEBUG] No se puede cargar calificación - UserId:", userId, "BusinessId:", id);
         return;
       }
       
@@ -215,46 +175,32 @@ export default function NegocioDetalle() {
           .maybeSingle();
 
         if (!ratingError && userRatingData) {
-          console.log("✅ [SUCCESS] Calificación del usuario cargada:", userRatingData);
           setUserRating(userRatingData.valor || 0);
           setUserComment(userRatingData.comentario || '');
         } else {
-          console.log("🔍 [DEBUG] No hay calificación previa del usuario");
           setUserRating(0);
           setUserComment('');
         }
       } catch (error) {
-        console.error("❌ [ERROR] Error al cargar calificación del usuario:", error);
         setUserRating(0);
         setUserComment('');
       }
     };
 
-    // ÚNICO listener para auth changes
-    console.log("🔍 [DEBUG] Configurando listener de autenticación");
+    // Listener para auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("🔍 [DEBUG] Auth state changed:", event);
-        console.log("🔍 [DEBUG] Session:", session ? "Existe" : "No existe");
-        
         if (event === 'INITIAL_SESSION') {
-          // Manejar sesión inicial
           if (session?.user) {
-            console.log("✅ [SUCCESS] Usuario encontrado en sesión inicial:", session.user.id);
             setUser(session.user);
-            // await loadUserRating(session.user.id);
           } else {
-            console.log("🔍 [DEBUG] No hay sesión inicial activa");
             setUser(null);
             setUserRating(0);
             setUserComment('');
           }
         } else if (event === 'SIGNED_IN' && session?.user) {
-          console.log("✅ [SUCCESS] Usuario inició sesión:", session.user.id);
           setUser(session.user);
-          // await loadUserRating(session.user.id);
         } else if (event === 'SIGNED_OUT' || !session) {
-          console.log("🔍 [DEBUG] Usuario cerró sesión");
           setUser(null);
           setUserRating(0);
           setUserComment('');
@@ -262,19 +208,13 @@ export default function NegocioDetalle() {
       }
     );
 
-    // Solo cargar datos del negocio una vez
-    console.log("🔍 [DEBUG] Ejecutando loadBusinessData");
     loadBusinessData();
 
     // Cleanup
     return () => {
-      console.log("🔍 [DEBUG] Limpiando componente");
       authListener?.subscription?.unsubscribe();
     };
   }, [id]);
-
-  // Debug del estado actual
-  console.log("🔍 [RENDER] Estado actual - Loading:", loading, "Negocio:", !!negocio, "Error:", loadError);
 
   const animateStars = (rating) => {
     starAnimations.forEach((anim, index) => {
@@ -331,7 +271,7 @@ export default function NegocioDetalle() {
       animateStars(rating);
       setUserRating(rating);
 
-      // Upsert calificación con mejor manejo de errores
+      // Upsert calificación
       const { error: upsertError } = await supabase
         .from('calificaciones')
         .upsert([
@@ -347,40 +287,22 @@ export default function NegocioDetalle() {
         });
 
       if (upsertError) {
-        console.error("Error al guardar calificación:", upsertError);
         Alert.alert('Error', 'No se pudo guardar la calificación');
         return;
       }
 
-      // Recalcular promedio de manera más robusta
+      // Usar la función SQL para calcular promedio
       try {
-        const { data: allRatings, error: ratingsError } = await supabase
-          .from('calificaciones')
-          .select('valor')
-          .eq('negocio_id', id)
-          .not('valor', 'is', null);
+        const { data: promedio, error: promedioError } = await supabase
+          .rpc('calcular_promedio_negocio', { 
+            negocio_id_param: parseInt(id) 
+          });
 
-        if (ratingsError) {
-          console.error("Error al obtener calificaciones:", ratingsError);
-        } else if (allRatings && allRatings.length > 0) {
-          const validRatings = allRatings.filter(r => typeof r.valor === 'number' && r.valor > 0);
-          if (validRatings.length > 0) {
-            const promedio = validRatings.reduce((acc, curr) => acc + curr.valor, 0) / validRatings.length;
-            
-            const { error: updateError } = await supabase
-              .from('negocios')
-              .update({ calificacion: promedio })
-              .eq('id', id);
-
-            if (updateError) {
-              console.error("Error al actualizar promedio:", updateError);
-            } else {
-              setNegocio(prev => prev ? { ...prev, calificacion: promedio } : null);
-            }
-          }
+        if (!promedioError) {
+          setNegocio(prev => prev ? { ...prev, calificacion: promedio } : null);
         }
       } catch (avgError) {
-        console.error("Error al recalcular promedio:", avgError);
+        // Error silencioso
       }
 
       // Recargar comentarios
@@ -390,18 +312,17 @@ export default function NegocioDetalle() {
           .select('valor, comentario, usuario_id')
           .eq('negocio_id', id);
 
-        if (commentsError) {
-          console.error("Error al recargar comentarios:", commentsError);
-        } else {
+        if (!commentsError) {
           setComentarios(newComments || []);
         }
       } catch (commentsError) {
-        console.error("Error inesperado al recargar comentarios:", commentsError);
+        // Error silencioso
       }
 
+      Alert.alert('¡Gracias!', 'Tu calificación ha sido guardada.');
+
     } catch (error) {
-      console.error("Error general al calificar:", error);
-      Alert.alert('Error', 'Ocurrió un error inesperado');
+      Alert.alert('Error', 'Ocurrió un error inesperado al guardar la calificación');
     }
   };
 
@@ -434,9 +355,22 @@ export default function NegocioDetalle() {
         });
 
       if (error) {
-        console.error("Error al guardar comentario:", error);
         Alert.alert('Error', 'No se pudo guardar el comentario');
         return;
+      }
+
+      // Recalcular promedio usando función SQL
+      try {
+        const { data: promedio, error: promedioError } = await supabase
+          .rpc('calcular_promedio_negocio', { 
+            negocio_id_param: parseInt(id) 
+          });
+
+        if (!promedioError) {
+          setNegocio(prev => prev ? { ...prev, calificacion: promedio || 0 } : null);
+        }
+      } catch (avgError) {
+        // Error silencioso
       }
 
       Alert.alert('¡Gracias!', 'Tu comentario ha sido guardado.');
@@ -448,17 +382,14 @@ export default function NegocioDetalle() {
           .select('valor, comentario, usuario_id')
           .eq('negocio_id', id);
 
-        if (commentsError) {
-          console.error("Error al recargar comentarios:", commentsError);
-        } else {
+        if (!commentsError) {
           setComentarios(newComments || []);
         }
       } catch (commentsError) {
-        console.error("Error inesperado al recargar comentarios:", commentsError);
+        // Error silencioso
       }
 
     } catch (error) {
-      console.error("Error general al guardar comentario:", error);
       Alert.alert('Error', 'Ocurrió un error inesperado');
     }
   };
@@ -472,7 +403,6 @@ export default function NegocioDetalle() {
   };
 
   if (loading) {
-    console.log("🔍 [DEBUG] Mostrando estado de carga - Loading:", loading);
     return (
       <View style={styles.loadingContainer}>
         <Animated.View style={[styles.loadingContent, { opacity: fadeAnim }]}>
@@ -489,7 +419,6 @@ export default function NegocioDetalle() {
   }
 
   if (!negocio) {
-    console.log("❌ [ERROR] No hay datos del negocio para mostrar - Negocio:", negocio, "Error:", loadError);
     return (
       <View style={styles.errorContainer}>
         <Animated.View style={[styles.errorContent, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
@@ -508,10 +437,6 @@ export default function NegocioDetalle() {
     );
   }
 
-  console.log("✅ [SUCCESS] Renderizando componente con datos del negocio");
-  console.log("🔍 [DEBUG] Imagen URL final:", negocio.imagen_url);
-  console.log("🔍 [DEBUG] Datos completos del negocio:", JSON.stringify(negocio, null, 2));
-
   const containerStyle = isDesktop ? [styles.container, styles.desktopContainer] : styles.container;
 
   return (
@@ -523,7 +448,11 @@ export default function NegocioDetalle() {
           <Animated.View 
             style={[
               styles.imageContainer, 
-              { height: imageHeight, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+              { 
+                height: imageHeight, 
+                opacity: 1,
+                transform: [{ scale: 1 }]
+              }
             ]}
           >
             <Image 
@@ -550,17 +479,17 @@ export default function NegocioDetalle() {
             </View>
             
             {/* Badge de categoría flotante */}
-            {negocio.categoria && (
+            {negocio.tipo && (
               <Animated.View 
                 style={[
                   styles.floatingCategoryBadge, 
                   { 
                     right: contentPadding,
-                    transform: [{ translateY: slideAnim }] 
+                    transform: [{ translateY: 0 }]
                   }
                 ]}
               >
-                <Text style={styles.categoryText}>{negocio.categoria}</Text>
+                <Text style={styles.categoryText}>{negocio.tipo}</Text>
               </Animated.View>
             )}
           </Animated.View>
@@ -579,8 +508,8 @@ export default function NegocioDetalle() {
                 styles.contentContainer,
                 { 
                   paddingHorizontal: contentPadding,
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }]
+                  opacity: 1,
+                  transform: [{ translateY: 0 }]
                 }
               ]}
             >
@@ -630,7 +559,7 @@ export default function NegocioDetalle() {
                     )}
                     
                     {user && (
-                      <Animated.View style={[styles.commentSection, { opacity: fadeAnim }]}>
+                      <Animated.View style={[styles.commentSection, { opacity: 1 }]}>
                         <TouchableOpacity
                           style={styles.commentToggle}
                           onPress={toggleCommentExpansion}
@@ -696,7 +625,6 @@ export default function NegocioDetalle() {
                       </Text>
                       <View style={[styles.productsList, isTablet && styles.productsListTablet]}>
                         {negocio.productos.map((prod, idx) => {
-                          // Validar que el producto tenga datos válidos
                           if (!prod || typeof prod !== 'object') return null;
                           
                           return (
@@ -706,13 +634,8 @@ export default function NegocioDetalle() {
                                 styles.productCard,
                                 isTablet && styles.productCardTablet,
                                 {
-                                  opacity: fadeAnim,
-                                  transform: [{
-                                    translateX: slideAnim.interpolate({
-                                      inputRange: [0, 50],
-                                      outputRange: [0, idx * 20],
-                                    })
-                                  }]
+                                  opacity: 1,
+                                  transform: [{ translateX: 0 }]
                                 }
                               ]}
                             >
@@ -739,7 +662,6 @@ export default function NegocioDetalle() {
                     ) : (
                       <View style={styles.commentsList}>
                         {comentarios.map((c, idx) => {
-                          // Validar que el comentario tenga datos válidos
                           if (!c || typeof c !== 'object') return null;
                           
                           const rating = typeof c.valor === 'number' ? Math.max(0, Math.min(5, c.valor)) : 0;
@@ -751,13 +673,8 @@ export default function NegocioDetalle() {
                                 styles.commentCard,
                                 isTablet && styles.commentCardTablet,
                                 {
-                                  opacity: fadeAnim,
-                                  transform: [{
-                                    translateY: slideAnim.interpolate({
-                                      inputRange: [0, 50],
-                                      outputRange: [0, idx * 10],
-                                    })
-                                  }]
+                                  opacity: 1,
+                                  transform: [{ translateY: 0 }]
                                 }
                               ]}
                             >
@@ -793,7 +710,7 @@ export default function NegocioDetalle() {
                     style={[
                       styles.actionButtonsContainer,
                       isDesktop && styles.actionButtonsDesktop,
-                      { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+                      { opacity: 1, transform: [{ scale: 1 }] }
                     ]}
                   >
                     <TouchableOpacity 
@@ -842,7 +759,7 @@ export default function NegocioDetalle() {
                   <Animated.View 
                     style={[
                       styles.infoCards,
-                      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                      { opacity: 1, transform: [{ translateY: 0 }] }
                     ]}
                   >
                     <View style={[styles.infoCard, isTablet && styles.infoCardTablet]}>
@@ -875,7 +792,7 @@ export default function NegocioDetalle() {
                     <Animated.View 
                       style={[
                         styles.section,
-                        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                        { opacity: 1, transform: [{ translateY: 0 }] }
                       ]}
                     >
                       <Text style={[styles.sectionTitle, isTablet && styles.sectionTitleTablet]}>
@@ -1492,3 +1409,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+// Función auxiliar para calcular promedio
+const calcularPromedioNegocio = async (negocioId) => {
+  try {
+    const { data: promedio, error } = await supabase
+      .rpc('calcular_promedio_negocio', { 
+        negocio_id_param: parseInt(negocioId) 
+      });
+
+    if (error) {
+      return 0;
+    }
+
+    return promedio || 0;
+  } catch (error) {
+    return 0;
+  }
+};

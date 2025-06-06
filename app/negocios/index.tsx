@@ -380,7 +380,6 @@ const TopRatedPanel = ({ topBusinesses, router }) => {
       <View style={styles.topRatedHeader}>
         <Text style={styles.topRatedTitle}>Mejor calificados</Text>
       </View>
-
       <ScrollView showsVerticalScrollIndicator={false}>
         {topBusinesses.map((business) => (
           <TouchableOpacity
@@ -694,7 +693,32 @@ export default function Negocios() {
       setFilteredNegocios(shuffledData);
 
       setCategories(extractCategories(originalData));
-      setTopRatedBusinesses(getTopRatedBusinesses(originalData));
+
+      // Obtener calificaciones promedio para los mejores negocios
+      const top5 = [...originalData]
+        .sort((a, b) => (b.calificacion || 0) - (a.calificacion || 0))
+        .slice(0, 5);
+
+      // Para cada negocio top, obtener su promedio real
+      const topWithRatings = await Promise.all(
+        top5.map(async (negocio) => {
+          try {
+            const { data: promedio, error: promError } = await supabase
+              .rpc('calcular_promedio_negocio', { negocio_id_param: negocio.id });
+            return {
+              ...negocio,
+              calificacion: promError ? 0 : (promedio || 0),
+            };
+          } catch {
+            return { ...negocio, calificacion: 0 };
+          }
+        })
+      );
+
+      // Ordenar de mayor a menor calificación
+      topWithRatings.sort((a, b) => (b.calificacion || 0) - (a.calificacion || 0));
+
+      setTopRatedBusinesses(topWithRatings);
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
