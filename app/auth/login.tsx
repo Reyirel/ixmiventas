@@ -103,6 +103,12 @@ export default function Login() {
           >
             {/* Header móvil con gradiente */}
             <View style={styles.mobileHeader}>
+              <TouchableOpacity 
+                style={styles.mobileBackButton} 
+                onPress={() => router.push('/')}
+              >
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
               <Text style={styles.mobileAppTitle}>
                 Compra en Ixmiquilpan 
               </Text>
@@ -295,6 +301,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    position: 'relative',
+  },
+  mobileBackButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 1,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   mobileAppTitle: {
     fontSize: 26,
@@ -302,6 +318,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     marginBottom: 8,
+    marginTop: 20,
   },
   mobileTitulo2: {
     fontSize: 20,
@@ -422,6 +439,12 @@ const styles = StyleSheet.create({
     color: '#800020',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  mobileBackButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    padding: 8,
   },
 
   // Estilos desktop existentes
