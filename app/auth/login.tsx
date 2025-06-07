@@ -105,7 +105,7 @@ export default function Login() {
             <View style={styles.mobileHeader}>
               <TouchableOpacity 
                 style={styles.mobileBackButton} 
-                onPress={() => router.push('/')}
+                onPress={() => router.push('/negocios')}
               >
                 <Ionicons name="arrow-back" size={24} color="#fff" />
               </TouchableOpacity>

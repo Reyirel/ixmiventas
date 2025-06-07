@@ -32,7 +32,7 @@ export default function NegocioPage() {
   const [descripcion, setDescripcion] = useState('');
   const [ubicacion, setUbicacion] = useState('');
   const [imagenLocal, setImagenLocal] = useState<string | null>(null);
-  const [imagenBase64, setImagenBase64] = useState<string | null>(null); // Agregar esto
+  const [imagenBase64, setImagenBase64] = useState<string | null>(null);
   const [productoNombre, setProductoNombre] = useState('');
   const [productoPrecio, setProductoPrecio] = useState('');
   const [productos, setProductos] = useState<{ nombre: string; precio: number }[]>([]);
@@ -145,7 +145,7 @@ export default function NegocioPage() {
       allowsEditing: true,
       quality: 0.7,
       aspect: [4, 3],
-      base64: true, // Obtener base64 directamente aquí
+      base64: true,
     });
     
     if (!result.canceled && result.assets.length > 0) {
@@ -163,7 +163,7 @@ export default function NegocioPage() {
       ]).start();
       
       setImagenLocal(result.assets[0].uri);
-      setImagenBase64(result.assets[0].base64 || null); // Guardar el base64
+      setImagenBase64(result.assets[0].base64 || null);
     }
   };
 
@@ -171,12 +171,8 @@ export default function NegocioPage() {
     if (!imagenLocal || !imagenBase64) return null;
     
     try {
-      console.log('📸 Iniciando subida de imagen...');
-      
       const fileName = `negocio_${userId}_${Date.now()}.jpg`;
-      console.log('📸 Subiendo archivo:', fileName);
       
-      // Usar el base64 que ya tenemos guardado
       const binaryString = atob(imagenBase64);
       const bytes = new Uint8Array(binaryString.length);
       
@@ -184,7 +180,6 @@ export default function NegocioPage() {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Subir usando Uint8Array directamente
       const { data, error } = await supabase.storage
         .from('negocios')
         .upload(fileName, bytes, {
@@ -193,23 +188,17 @@ export default function NegocioPage() {
         });
         
       if (error) {
-        console.error('❌ Error de Supabase:', error);
         Alert.alert('Error al subir imagen', error.message);
         return null;
       }
-      
-      console.log('✅ Imagen subida exitosamente:', data.path);
       
       const { data: urlData } = supabase.storage
         .from('negocios')
         .getPublicUrl(fileName);
         
-      console.log('✅ URL pública generada:', urlData.publicUrl);
       return urlData.publicUrl;
       
     } catch (error) {
-      console.error('💥 Error completo:', error);
-      
       if (error.message.includes('Network request failed')) {
         Alert.alert(
           'Error de conexión', 
@@ -242,7 +231,7 @@ export default function NegocioPage() {
     setDescripcion('');
     setUbicacion('');
     setImagenLocal(null);
-    setImagenBase64(null); // Limpiar también el base64
+    setImagenBase64(null);
     setProductoNombre('');
     setProductoPrecio('');
     setProductos([]);
@@ -334,6 +323,9 @@ export default function NegocioPage() {
     setModalVisible(true);
   };
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [negocioToDelete, setNegocioToDelete] = useState(null);
+
   const eliminarNegocio = async (id: number) => {
     console.log('🗑️ Iniciando eliminación de negocio...');
     console.log('🔍 ID del negocio a eliminar:', id);
@@ -343,101 +335,181 @@ export default function NegocioPage() {
     const negocioAEliminar = misNegocios.find(negocio => negocio.id === id);
     console.log('📄 Negocio encontrado:', negocioAEliminar);
     
-    if (negocioAEliminar) {
-      console.log('✅ Negocio pertenece al usuario:', negocioAEliminar.user_id === userId);
-      console.log('📋 Datos del negocio:', {
-        id: negocioAEliminar.id,
-        nombre: negocioAEliminar.nombre,
-        user_id: negocioAEliminar.user_id,
-        aprobado: negocioAEliminar.aprobado
-      });
-    } else {
-      console.log('❌ No se encontró el negocio en la lista local');
+    // Para web, usar modal personalizado
+    if (Platform.OS === 'web') {
+      setNegocioToDelete(negocioAEliminar);
+      setShowDeleteConfirm(true);
+      return;
     }
-
+    
+    // Para móvil, usar Alert nativo
     Alert.alert(
       'Confirmar eliminación',
-      '¿Estás seguro de eliminar este negocio?',
+      '¿Estás seguro de eliminar este negocio? También se eliminarán todas las calificaciones asociadas.',
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Eliminar', 
           style: 'destructive',
-          onPress: async () => {
-            console.log('🚀 Ejecutando eliminación...');
-            
-            try {
-              // Primero verificar los permisos de la tabla
-              console.log('🔐 Verificando permisos de eliminación...');
-              
-              const { data: checkData, error: checkError } = await supabase
-                .from('negocios')
-                .select('*')
-                .eq('id', id)
-                .eq('user_id', userId)
-                .single();
-              
-              console.log('📊 Resultado de verificación:', { checkData, checkError });
-              
-              if (checkError) {
-                console.error('❌ Error al verificar el negocio:', checkError);
-                Alert.alert('Error', `No se pudo verificar el negocio: ${checkError.message}`);
-                return;
-              }
-              
-              if (!checkData) {
-                console.error('❌ El negocio no existe o no te pertenece');
-                Alert.alert('Error', 'El negocio no existe o no tienes permisos para eliminarlo');
-                return;
-              }
-              
-              console.log('✅ Negocio verificado, procediendo con la eliminación...');
-              
-              const { data, error } = await supabase
-                .from('negocios')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', userId); // Doble verificación
-              
-              console.log('📤 Resultado de eliminación:', { data, error });
-              
-              if (error) {
-                console.error('❌ Error de Supabase al eliminar:', error);
-                console.error('📋 Detalles del error:', {
-                  message: error.message,
-                  details: error.details,
-                  hint: error.hint,
-                  code: error.code
-                });
-                Alert.alert('Error', `No se pudo eliminar el negocio: ${error.message}`);
-              } else {
-                console.log('✅ Negocio eliminado exitosamente');
-                
-                // Actualizar inmediatamente la lista local
-                console.log('🔄 Actualizando lista local inmediatamente...');
-                setMisNegocios(prevNegocios => prevNegocios.filter(negocio => negocio.id !== id));
-                
-                // Mostrar mensaje de éxito DESPUÉS de actualizar la lista
-                Alert.alert('Éxito', 'Negocio eliminado correctamente', [
-                  {
-                    text: 'OK',
-                    onPress: async () => {
-                      // Recargar desde el servidor para confirmar
-                      console.log('🔄 Recargando desde servidor...');
-                      await fetchMisNegocios(userId!);
-                      console.log('✅ Lista actualizada desde servidor');
-                    }
-                  }
-                ]);
-              }
-            } catch (error) {
-              console.error('💥 Error inesperado durante eliminación:', error);
-              Alert.alert('Error', 'Ocurrió un error inesperado al eliminar el negocio');
-            }
-          }
+          onPress: () => ejecutarEliminacion(id)
         }
       ]
     );
+  };
+
+  const ejecutarEliminacion = async (id: number) => {
+    console.log('🚀 Ejecutando eliminación...');
+    
+    try {
+      // Verificar el estado de autenticación
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      console.log('🔐 Estado de autenticación:', { 
+        user: authData.user?.id, 
+        error: authError 
+      });
+
+      if (authError || !authData.user) {
+        console.error('❌ Usuario no autenticado');
+        if (Platform.OS === 'web') {
+          alert('Sesión expirada. Inicia sesión nuevamente.');
+        } else {
+          Alert.alert('Error', 'Sesión expirada. Inicia sesión nuevamente.');
+        }
+        return;
+      }
+      
+      // Verificar los permisos de la tabla
+      console.log('🔐 Verificando permisos de eliminación...');
+      
+      const { data: checkData, error: checkError } = await supabase
+        .from('negocios')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+      
+      console.log('📊 Resultado de verificación:', { checkData, checkError });
+      
+      if (checkError) {
+        console.error('❌ Error al verificar el negocio:', checkError);
+        const errorMsg = `No se pudo verificar el negocio: ${checkError.message}`;
+        if (Platform.OS === 'web') {
+          alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+        return;
+      }
+      
+      if (!checkData) {
+        console.error('❌ El negocio no existe o no te pertenece');
+        const errorMsg = 'El negocio no existe o no tienes permisos para eliminarlo';
+        if (Platform.OS === 'web') {
+          alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+        return;
+      }
+      
+      console.log('✅ Negocio verificado, procediendo con la eliminación...');
+      
+      // PASO 1: Eliminar todas las calificaciones asociadas
+      console.log('🗑️ Eliminando calificaciones asociadas...');
+      const { error: calificacionesError } = await supabase
+        .from('calificaciones')
+        .delete()
+        .eq('negocio_id', id);
+    
+      if (calificacionesError) {
+        console.error('❌ Error eliminando calificaciones:', calificacionesError);
+        const errorMsg = `No se pudieron eliminar las calificaciones: ${calificacionesError.message}`;
+        if (Platform.OS === 'web') {
+          alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+        return;
+      }
+    
+      console.log('✅ Calificaciones eliminadas exitosamente');
+    
+      // PASO 2: Ahora eliminar el negocio
+      console.log('🗑️ Eliminando negocio...');
+      const { data, error, count } = await supabase
+        .from('negocios')
+        .delete({ count: 'exact' })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select();
+    
+      console.log('📤 Resultado completo de eliminación:', { 
+        data, 
+        error, 
+        count,
+        eliminatedRecords: data?.length || 0
+      });
+    
+      if (error) {
+        console.error('❌ Error de Supabase al eliminar:', error);
+        console.error('📋 Detalles del error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        const errorMsg = `No se pudo eliminar el negocio: ${error.message}`;
+        if (Platform.OS === 'web') {
+          alert(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+      } else if (count === 0) {
+        console.error('⚠️ No se eliminó ningún registro');
+        const warningMsg = 'No se eliminó ningún registro. Verifica los permisos.';
+        if (Platform.OS === 'web') {
+          alert(warningMsg);
+        } else {
+          Alert.alert('Advertencia', warningMsg);
+        }
+      } else {
+        console.log(`✅ ${count} negocio(s) eliminado(s) exitosamente`);
+        
+        // Actualizar inmediatamente la lista local
+        console.log('🔄 Actualizando lista local inmediatamente...');
+        setMisNegocios(prevNegocios => prevNegocios.filter(negocio => negocio.id !== id));
+        
+        // Mostrar mensaje de éxito
+        const successMsg = 'Negocio y calificaciones eliminados correctamente';
+        if (Platform.OS === 'web') {
+          alert(successMsg);
+          // Recargar desde el servidor para confirmar
+          console.log('🔄 Recargando desde servidor...');
+          await fetchMisNegocios(userId!);
+          console.log('✅ Lista actualizada desde servidor');
+        } else {
+          Alert.alert('Éxito', successMsg, [
+            {
+              text: 'OK',
+              onPress: async () => {
+                // Recargar desde el servidor para confirmar
+                console.log('🔄 Recargando desde servidor...');
+                await fetchMisNegocios(userId!);
+                console.log('✅ Lista actualizada desde servidor');
+              }
+            }
+          ]);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Error inesperado durante eliminación:', error);
+      const errorMsg = `Ocurrió un error inesperado: ${error.message}`;
+      if (Platform.OS === 'web') {
+        alert(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
+    }
   };
 
   const spin = rotateAnim.interpolate({
@@ -962,6 +1034,56 @@ export default function NegocioPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de confirmación de eliminación para web */}
+      {Platform.OS === 'web' && (
+        <Modal visible={showDeleteConfirm} animationType="fade" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.confirmModal}>
+              <View style={styles.confirmModalHeader}>
+                <Text style={styles.confirmModalTitle}>Confirmar eliminación</Text>
+              </View>
+              
+              <View style={styles.confirmModalBody}>
+                <Ionicons name="warning" size={48} color="#ff6b35" style={styles.warningIcon} />
+                <Text style={styles.confirmModalText}>
+                  ¿Estás seguro de eliminar el negocio "{negocioToDelete?.nombre}"?
+                </Text>
+                <Text style={styles.confirmModalSubtext}>
+                  También se eliminarán todas las calificaciones asociadas. Esta acción no se puede deshacer.
+                </Text>
+              </View>
+              
+              <View style={styles.confirmModalActions}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowDeleteConfirm(false);
+                    setNegocioToDelete(null);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.confirmDeleteButton}
+                  onPress={async () => {
+                    setShowDeleteConfirm(false);
+                    const id = negocioToDelete?.id;
+                    setNegocioToDelete(null);
+                    if (id) {
+                      await ejecutarEliminacion(id);
+                    }
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#fff" />
+                  <Text style={styles.confirmDeleteButtonText}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1569,36 +1691,81 @@ const styles = StyleSheet.create({
     color: '#800020',
     fontWeight: 'bold',
   },
-  selectModal: {
+
+  // Estilos para el modal de confirmación web
+  confirmModal: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     width: '90%',
-    maxHeight: '70%',
-    marginHorizontal: '5%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  selectModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  confirmModalHeader: {
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  selectModalTitle: {
-    fontSize: 18,
+  confirmModalTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
-  selectOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  confirmModalBody: {
+    padding: 20,
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
-  selectOptionText: {
+  warningIcon: {
+    marginBottom: 16,
+  },
+  confirmModalText: {
     fontSize: 16,
     color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontWeight: '500',
+  },
+  confirmModalSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  confirmModalActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#f0f0f0',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f44336',
+    borderBottomRightRadius: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  confirmDeleteButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
   },
 });
