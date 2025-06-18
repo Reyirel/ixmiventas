@@ -23,6 +23,11 @@ const CATEGORIAS = [
   'Servicios',
   'Supermercado',
   'Entretenimiento',
+  'Agricultura',
+  'Ganadería',
+  'Decoración',
+  'Cuidado personal',
+  'Artesanías',
   'Otro'
 ];
 
@@ -39,6 +44,7 @@ export default function NegocioPage() {
   const [loading, setLoading] = useState(false);
   const [telefono, setTelefono] = useState('');
   const [tipoNegocio, setTipoNegocio] = useState('');
+  const [redesSociales, setRedesSociales] = useState<{ facebook?: string; instagram?: string; x?: string }>({});
   
   // Estados de navegación y datos
   const router = useRouter();
@@ -52,16 +58,17 @@ export default function NegocioPage() {
   const [horarios, setHorarios] = useState<{ 
     [dia: string]: { 
       apertura: { hora: string; minuto: string; ampm: string }, 
-      cierre: { hora: string; minuto: string; ampm: string } 
+      cierre: { hora: string; minuto: string; ampm: string },
+      noTrabaja?: boolean
     } 
   }>({
-    lunes:    { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    martes:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    miercoles:{ apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    jueves:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    viernes:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    sabado:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-    domingo:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+    lunes:    { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    martes:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    miercoles:{ apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    jueves:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    viernes:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    sabado:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    domingo:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
   });
 
   // Animaciones
@@ -238,14 +245,15 @@ export default function NegocioPage() {
     setTelefono('');
     setTipoNegocio('');
     setHorarios({
-      lunes:    { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      martes:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      miercoles:{ apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      jueves:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      viernes:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      sabado:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
-      domingo:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' } },
+      lunes:    { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      martes:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      miercoles:{ apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      jueves:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      viernes:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      sabado:   { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      domingo:  { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
     });
+    setRedesSociales({});
   };
 
   const handleSubmit = async () => {
@@ -263,8 +271,8 @@ export default function NegocioPage() {
 
     for (const dia of Object.keys(horarios)) {
       const h = horarios[dia];
-      if (!h.apertura.hora || !h.apertura.minuto || !h.cierre.hora || !h.cierre.minuto) {
-        Alert.alert('Completa los horarios de todos los días');
+      if (!h.noTrabaja && (!h.apertura.hora || !h.apertura.minuto || !h.cierre.hora || !h.cierre.minuto)) {
+        Alert.alert('Completa los horarios de todos los días o marca "No se trabaja"');
         return;
       }
     }
@@ -296,7 +304,8 @@ export default function NegocioPage() {
         aprobado: false,
         telefono,
         horarios,
-        tipo: tipoNegocio, 
+        tipo: tipoNegocio,
+        redes_sociales: redesSociales,
       });
 
       if (error) {
@@ -555,6 +564,12 @@ export default function NegocioPage() {
               <Text style={styles.categoryBadgeText}>{item.tipo}</Text>
             </View>
           )}
+          {item.edicion_pendiente && (
+            <View style={styles.editPendingBadge}>
+              <Ionicons name="create-outline" size={12} color="#fff" />
+              <Text style={styles.editPendingText}>Edición pendiente</Text>
+            </View>
+          )}
         </View>
         <View style={[styles.statusBadge, item.aprobado ? styles.approvedBadge : styles.pendingBadge]}>
           <Ionicons 
@@ -586,6 +601,14 @@ export default function NegocioPage() {
           <Ionicons name="eye-outline" size={18} color="#fff" />
           <Text style={styles.btnText}>Ver detalle</Text>
         </TouchableOpacity>
+        
+        {item.aprobado && !item.edicion_pendiente && (
+          <TouchableOpacity style={styles.editBtn} onPress={() => abrirEdicion(item)}>
+            <Ionicons name="create-outline" size={18} color="#fff" />
+            <Text style={styles.btnText}>Editar</Text>
+          </TouchableOpacity>
+        )}
+        
         <TouchableOpacity style={styles.deleteBtn} onPress={() => eliminarNegocio(item.id)}>
           <Ionicons name="trash-outline" size={18} color="#fff" />
           <Text style={styles.btnText}>Eliminar</Text>
@@ -593,6 +616,146 @@ export default function NegocioPage() {
       </View>
     </View>
   );
+
+  // Estados para edición
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [negocioAEditar, setNegocioAEditar] = useState(null);
+
+  const [editNombre, setEditNombre] = useState('');
+  const [editDescripcion, setEditDescripcion] = useState('');
+  const [editUbicacion, setEditUbicacion] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
+  const [editTipoNegocio, setEditTipoNegocio] = useState('');
+  const [editProductos, setEditProductos] = useState([]);
+  const [editHorarios, setEditHorarios] = useState({});
+  const [editRedesSociales, setEditRedesSociales] = useState({});
+  const [editImagenLocal, setEditImagenLocal] = useState(null);
+  const [editImagenBase64, setEditImagenBase64] = useState(null);
+
+  // Función para abrir modal de edición
+  const abrirEdicion = (negocio) => {
+    setNegocioAEditar(negocio);
+    setEditNombre(negocio.nombre);
+    setEditDescripcion(negocio.descripcion);
+    setEditUbicacion(negocio.ubicacion);
+    setEditTelefono(negocio.telefono || '');
+    setEditTipoNegocio(negocio.tipo || '');
+    setEditProductos(negocio.productos || []);
+    setEditHorarios(negocio.horarios || {
+      lunes: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      martes: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      miercoles: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      jueves: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      viernes: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      sabado: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+      domingo: { apertura: { hora: '', minuto: '', ampm: 'AM' }, cierre: { hora: '', minuto: '', ampm: 'PM' }, noTrabaja: false },
+    });
+    setEditRedesSociales(negocio.redes_sociales || {});
+    setEditImagenLocal(negocio.imagen_url);
+    setEditImagenBase64(null);
+    setEditModalVisible(true);
+  };
+
+  // Función para seleccionar imagen en edición
+  const seleccionarImagenEdicion = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+      aspect: [4, 3],
+      base64: true,
+    });
+    
+    if (!result.canceled && result.assets.length > 0) {
+      setEditImagenLocal(result.assets[0].uri);
+      setEditImagenBase64(result.assets[0].base64 || null);
+    }
+  };
+
+  // Función para agregar producto en edición
+  const agregarProductoEdicion = () => {
+    if (!productoNombre || !productoPrecio) {
+      Alert.alert('Error', 'Completa el nombre y precio del producto');
+      return;
+    }
+    
+    setEditProductos([
+      ...editProductos,
+      { nombre: productoNombre, precio: Number(productoPrecio) },
+    ]);
+    setProductoNombre('');
+    setProductoPrecio('');
+  };
+
+  // Función para eliminar producto en edición
+  const eliminarProductoEdicion = (index) => {
+    const nuevosProductos = editProductos.filter((_, i) => i !== index);
+    setEditProductos(nuevosProductos);
+  };
+
+  // Función para enviar edición
+  const enviarEdicion = async () => {
+    if (!editNombre || !editDescripcion || !editUbicacion || !editTelefono || !editTipoNegocio) {
+      Alert.alert('Error', 'Faltan datos obligatorios');
+      return;
+    }
+
+    if (editProductos.length === 0) {
+      Alert.alert('Error', 'Agrega al menos un producto');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      let urlImagen = editImagenLocal;
+      
+      // Si hay una nueva imagen, subirla
+      if (editImagenBase64) {
+        const nuevaUrl = await subirImagen();
+        if (nuevaUrl) {
+          urlImagen = nuevaUrl;
+        }
+      }
+
+      // Preparar datos de la edición
+      const datosEdicion = {
+        nombre: editNombre,
+        descripcion: editDescripcion,
+        ubicacion: editUbicacion,
+        telefono: editTelefono,
+        tipo: editTipoNegocio,
+        productos: editProductos,
+        horarios: editHorarios,
+        redes_sociales: editRedesSociales,
+        imagen_url: urlImagen,
+      };
+
+      // Guardar la edición pendiente
+      const { error } = await supabase
+        .from('negocios')
+        .update({
+          edicion_pendiente: true,
+          datos_edicion: datosEdicion,
+          fecha_edicion: new Date().toISOString(),
+        })
+        .eq('id', negocioAEditar.id);
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo enviar la edición');
+        console.error('Error:', error);
+      } else {
+        Alert.alert('Éxito', 'Edición enviada. Esperando aprobación del administrador.');
+        setEditModalVisible(false);
+        await fetchMisNegocios(userId!);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Ocurrió un error inesperado');
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -848,90 +1011,172 @@ export default function NegocioPage() {
                 <Text style={styles.sectionTitle}>Horarios</Text>
               </View>
               
-              {Object.keys(horarios).map((dia) => (
-                <View key={dia} style={styles.horarioContainer}>
-                  <View style={styles.horarioDayHeader}>
-                    <Text style={styles.horarioDayText}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
-                  </View>
-                  
-                  <View style={styles.horarioRow}>
-                    <View style={styles.horarioColumn}>
-                      <Text style={styles.horarioLabel}>Apertura:</Text>
-                      <View style={styles.horarioInputGroup}>
-                        <TextInput
-                          value={horarios[dia].apertura.hora}
-                          onChangeText={text => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, hora: text } }
-                          }))}
-                          placeholder="hh"
-                          keyboardType="numeric"
-                          style={styles.horarioInput}
-                          maxLength={2}
+              {Object.keys(horarios).map((dia) => {
+                const noTrabaja = horarios[dia].noTrabaja;
+                return (
+                  <View key={dia} style={styles.horarioContainer}>
+                    <View style={styles.horarioDayHeader}>
+                      <Text style={styles.horarioDayText}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
+                      <TouchableOpacity
+                        style={styles.noTrabajaBtn}
+                        onPress={() => setHorarios(prev => ({
+                          ...prev,
+                          [dia]: {
+                            ...prev[dia],
+                            noTrabaja: !prev[dia].noTrabaja,
+                            apertura: { hora: '', minuto: '', ampm: 'AM' },
+                            cierre: { hora: '', minuto: '', ampm: 'PM' }
+                          }
+                        }))}
+                      >
+                        <Ionicons
+                          name={noTrabaja ? "checkbox" : "square-outline"}
+                          size={20}
+                          color={noTrabaja ? "#800020" : "#888"}
                         />
-                        <Text style={styles.horarioSeparator}>:</Text>
-                        <TextInput
-                          value={horarios[dia].apertura.minuto}
-                          onChangeText={text => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, minuto: text } }
-                          }))}
-                          placeholder="mm"
-                          keyboardType="numeric"
-                          style={styles.horarioInput}
-                          maxLength={2}
-                        />
-                        <TouchableOpacity
-                          onPress={() => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, ampm: prev[dia].apertura.ampm === 'AM' ? 'PM' : 'AM' } }
-                          }))}
-                          style={styles.ampmButton}
-                        >
-                          <Text style={styles.ampmButtonText}>{horarios[dia].apertura.ampm}</Text>
-                        </TouchableOpacity>
-                      </View>
+                        <Text style={{ marginLeft: 6, color: noTrabaja ? "#800020" : "#888", fontSize: 13 }}>
+                          No se trabaja
+                        </Text>
+                      </TouchableOpacity>
                     </View>
-                    
-                    <View style={styles.horarioColumn}>
-                      <Text style={styles.horarioLabel}>Cierre:</Text>
-                      <View style={styles.horarioInputGroup}>
-                        <TextInput
-                          value={horarios[dia].cierre.hora}
-                          onChangeText={text => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, hora: text } }
-                          }))}
-                          placeholder="hh"
-                          keyboardType="numeric"
-                          style={styles.horarioInput}
-                          maxLength={2}
-                        />
-                        <Text style={styles.horarioSeparator}>:</Text>
-                        <TextInput
-                          value={horarios[dia].cierre.minuto}
-                          onChangeText={text => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, minuto: text } }
-                          }))}
-                          placeholder="mm"
-                          keyboardType="numeric"
-                          style={styles.horarioInput}
-                          maxLength={2}
-                        />
-                        <TouchableOpacity
-                          onPress={() => setHorarios(prev => ({
-                            ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, ampm: prev[dia].cierre.ampm === 'AM' ? 'PM' : 'AM' } }
-                          }))}
-                          style={styles.ampmButton}
-                        >
-                          <Text style={styles.ampmButtonText}>{horarios[dia].cierre.ampm}</Text>
-                        </TouchableOpacity>
+                    {!noTrabaja && (
+                      <View
+                        style={[
+                          styles.horarioRow,
+                          isSmallScreen ? { flexDirection: 'column', gap: 8 } : { flexDirection: 'row', gap: 16 }
+                        ]}
+                      >
+                        {/* Apertura */}
+                        <View style={[styles.horarioColumn, { marginBottom: isSmallScreen ? 8 : 0 }]}>
+                          <Text style={styles.horarioLabel}>Apertura</Text>
+                          <View style={styles.horarioInputGroup}>
+                            <TextInput
+                              value={horarios[dia].apertura.hora}
+                              onChangeText={text => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, hora: text } }
+                              }))}
+                              placeholder="hh"
+                              keyboardType="numeric"
+                              style={styles.horarioInputCompact}
+                              maxLength={2}
+                            />
+                            <Text style={styles.horarioSeparator}>:</Text>
+                            <TextInput
+                              value={horarios[dia].apertura.minuto}
+                              onChangeText={text => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, minuto: text } }
+                              }))}
+                              placeholder="mm"
+                              keyboardType="numeric"
+                              style={styles.horarioInputCompact}
+                              maxLength={2}
+                            />
+                            <TouchableOpacity
+                              onPress={() => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], apertura: { ...prev[dia].apertura, ampm: prev[dia].apertura.ampm === 'AM' ? 'PM' : 'AM' } }
+                              }))}
+                              style={styles.ampmButtonCompact}
+                            >
+                              <Text style={styles.ampmButtonText}>{horarios[dia].apertura.ampm}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        {/* Cierre */}
+                        <View style={styles.horarioColumn}>
+                          <Text style={styles.horarioLabel}>Cierre</Text>
+                          <View style={styles.horarioInputGroup}>
+                            <TextInput
+                              value={horarios[dia].cierre.hora}
+                              onChangeText={text => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, hora: text } }
+                              }))}
+                              placeholder="hh"
+                              keyboardType="numeric"
+                              style={styles.horarioInputCompact}
+                              maxLength={2}
+                            />
+                            <Text style={styles.horarioSeparator}>:</Text>
+                            <TextInput
+                              value={horarios[dia].cierre.minuto}
+                              onChangeText={text => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, minuto: text } }
+                              }))}
+                              placeholder="mm"
+                              keyboardType="numeric"
+                              style={styles.horarioInputCompact}
+                              maxLength={2}
+                            />
+                            <TouchableOpacity
+                              onPress={() => setHorarios(prev => ({
+                                ...prev, [dia]: { ...prev[dia], cierre: { ...prev[dia].cierre, ampm: prev[dia].cierre.ampm === 'AM' ? 'PM' : 'AM' } }
+                              }))}
+                              style={styles.ampmButtonCompact}
+                            >
+                              <Text style={styles.ampmButtonText}>{horarios[dia].cierre.ampm}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
                       </View>
-                    </View>
+                    )}
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </Animated.View>
 
-            <Animated.View 
-              style={{transform: [{scale: scaleAnim}], marginVertical: 30}}
-            >
+            <Animated.View style={[
+              styles.card, 
+              {opacity: fadeAnim, transform: [{translateY: slideAnim}, {scale: scaleAnim}]}
+            ]}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="share" size={22} color="#800020" />
+                <Text style={styles.sectionTitle}>Redes Sociales</Text>
+              </View>
+              
+              <View style={styles.inputContainer}>
+                <FontAwesome5 name="facebook" size={20} color="#1877F2" style={styles.inputIcon} />
+                <TextInput 
+                  value={redesSociales.facebook || ''} 
+                  onChangeText={(text) => setRedesSociales(prev => ({...prev, facebook: text}))} 
+                  placeholder="Usuario de Facebook (opcional)" 
+                  placeholderTextColor="#AAA"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <FontAwesome5 name="instagram" size={20} color="#E4405F" style={styles.inputIcon} />
+                <TextInput 
+                  value={redesSociales.instagram || ''} 
+                  onChangeText={(text) => setRedesSociales(prev => ({...prev, instagram: text}))} 
+                  placeholder="Usuario de Instagram (opcional)" 
+                  placeholderTextColor="#AAA"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <FontAwesome5 name="twitter" size={20} color="#1DA1F2" style={styles.inputIcon} />
+                <TextInput 
+                  value={redesSociales.x || ''} 
+                  onChangeText={(text) => setRedesSociales(prev => ({...prev, x: text}))} 
+                  placeholder="Usuario de X/Twitter (opcional)" 
+                  placeholderTextColor="#AAA"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.socialMediaNote}>
+                <Ionicons name="information-circle-outline" size={16} color="#666" />
+                <Text style={styles.socialMediaNoteText}>
+                  Solo ingresa el nombre de usuario, sin @ ni URL completa
+                </Text>
+              </View>
+            </Animated.View>
+
+            <Animated.View style={{transform: [{scale: scaleAnim}], marginVertical: 30}}>
               <TouchableOpacity 
                 style={styles.submitButton} 
                 onPress={handleSubmit}
@@ -997,8 +1242,227 @@ export default function NegocioPage() {
                       ))}
                     </View>
                   )}
+
+                  {selectedNegocio?.redes_sociales && Object.keys(selectedNegocio.redes_sociales).some(key => selectedNegocio.redes_sociales[key]) && (
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Redes Sociales</Text>
+                      {selectedNegocio.redes_sociales.facebook && (
+                        <View style={styles.socialMediaItem}>
+                          <FontAwesome5 name="facebook" size={16} color="#1877F2" />
+                          <Text style={styles.socialMediaText}>@{selectedNegocio.redes_sociales.facebook}</Text>
+                        </View>
+                      )}
+                      {selectedNegocio.redes_sociales.instagram && (
+                        <View style={styles.socialMediaItem}>
+                          <FontAwesome5 name="instagram" size={16} color="#E4405F" />
+                          <Text style={styles.socialMediaText}>@{selectedNegocio.redes_sociales.instagram}</Text>
+                        </View>
+                      )}
+                      {selectedNegocio.redes_sociales.x && (
+                        <View style={styles.socialMediaItem}>
+                          <FontAwesome5 name="twitter" size={16} color="#1DA1F2" />
+                          <Text style={styles.socialMediaText}>@{selectedNegocio.redes_sociales.x}</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </>
               )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de edición */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop, {maxHeight: '95%'}]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Negocio</Text>
+              <TouchableOpacity 
+                style={styles.closeBtn}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#800020" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {/* Información básica */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Información Básica</Text>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Nombre del negocio</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editNombre}
+                    onChangeText={setEditNombre}
+                    placeholder="Nombre del negocio"
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Descripción</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.textArea]}
+                    value={editDescripcion}
+                    onChangeText={setEditDescripcion}
+                    placeholder="Descripción del negocio"
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Ubicación</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editUbicacion}
+                    onChangeText={setEditUbicacion}
+                    placeholder="Dirección"
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Teléfono</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editTelefono}
+                    onChangeText={setEditTelefono}
+                    placeholder="Número de teléfono"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Tipo de negocio</Text>
+                  <TouchableOpacity 
+                    style={styles.modalSelect}
+                    onPress={() => setShowTipoModal(true)}
+                  >
+                    <Text style={[styles.selectText, !editTipoNegocio && styles.selectPlaceholder]}>
+                      {editTipoNegocio || "Selecciona una opción"}
+                    </Text>
+                    <MaterialIcons name="arrow-drop-down" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Imagen */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Imagen</Text>
+                <TouchableOpacity 
+                  style={styles.modalImagePicker} 
+                  onPress={seleccionarImagenEdicion}
+                >
+                  {editImagenLocal ? (
+                    <Image source={{ uri: editImagenLocal }} style={styles.modalPreviewImage} />
+                  ) : (
+                    <View style={styles.modalImagePickerInner}>
+                      <MaterialIcons name="add-photo-alternate" size={40} color="#800020" />
+                      <Text style={styles.imagePickerText}>Seleccionar imagen</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Productos */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Productos</Text>
+                
+                <View style={styles.addProductContainer}>
+                  <TextInput
+                    style={[styles.modalInput, { flex: 2, marginRight: 8 }]}
+                    value={productoNombre}
+                    onChangeText={setProductoNombre}
+                    placeholder="Nombre del producto"
+                  />
+                  <TextInput
+                    style={[styles.modalInput, { flex: 1, marginLeft: 8 }]}
+                    value={productoPrecio}
+                    onChangeText={setProductoPrecio}
+                    placeholder="Precio"
+                    keyboardType="numeric"
+                  />
+                </View>
+                
+                <TouchableOpacity style={styles.addButton} onPress={agregarProductoEdicion}>
+                  <Ionicons name="add" size={20} color="#fff" />
+                  <Text style={styles.btnText}>Agregar</Text>
+                </TouchableOpacity>
+                
+                {editProductos.map((producto, index) => (
+                  <View key={index} style={styles.productItem}>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>{producto.nombre}</Text>
+                      <Text style={styles.productPrice}>${producto.precio}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.deleteProductButton}
+                      onPress={() => eliminarProductoEdicion(index)}
+                    >
+                      <Ionicons name="close" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+              {/* Redes Sociales */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Redes Sociales</Text>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Facebook</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editRedesSociales.facebook || ''}
+                    onChangeText={(text) => setEditRedesSociales(prev => ({...prev, facebook: text}))}
+                    placeholder="Usuario de Facebook (opcional)"
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Instagram</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editRedesSociales.instagram || ''}
+                    onChangeText={(text) => setEditRedesSociales(prev => ({...prev, instagram: text}))}
+                    placeholder="Usuario de Instagram (opcional)"
+                  />
+                </View>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>X/Twitter</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editRedesSociales.x || ''}
+                    onChangeText={(text) => setEditRedesSociales(prev => ({...prev, x: text}))}
+                    placeholder="Usuario de X/Twitter (opcional)"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.saveBtn} 
+                  onPress={enviarEdicion}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-outline" size={20} color="#fff" />
+                      <Text style={styles.btnText}>Enviar Edición</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}>
+                  <Ionicons name="close-outline" size={20} color="#fff" />
+                  <Text style={styles.btnText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -1341,6 +1805,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  editBtn: {
+    backgroundColor: '#E1CB7A',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
 
   // Formulario
   formContainer: {
@@ -1521,61 +1995,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   horarioContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
     padding: 10,
     backgroundColor: '#F8F8F8',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    minWidth: 0,
+    overflow: 'hidden',
   },
   horarioDayHeader: {
-    marginBottom: 10,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   horarioDayText: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
+    flexShrink: 1,
+  },
+  noTrabajaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: '#f3f3f3',
   },
   horarioRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: '100%',
+    gap: 16,
   },
   horarioColumn: {
     flex: 1,
+    minWidth: 120,
   },
   horarioLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#555',
-    marginBottom: 5,
+    marginBottom: 3,
+    fontWeight: '600',
   },
   horarioInputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
-  horarioInput: {
-    width: 40,
-    padding: 8,
-    fontSize: 16,
-    backgroundColor: '#FFFFFF',
+  horarioInputCompact: {
+    width: 38,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    fontSize: 15,
+       backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 6,
     textAlign: 'center',
+    marginHorizontal: 0,
   },
   horarioSeparator: {
-    marginHorizontal: 5,
-    fontSize: 18,
+    marginHorizontal: 2,
+    fontSize: 16,
     color: '#333',
+    fontWeight: 'bold',
   },
-  ampmButton: {
-    marginLeft: 8,
-    padding: 8,
+  ampmButtonCompact: {
+    marginLeft: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: '#800020',
     borderRadius: 6,
-    minWidth: 45,
+    minWidth: 38,
     alignItems: 'center',
   },
   ampmButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+    fontSize: 13,
   },
   submitButton: {
     borderRadius: 10,
@@ -1767,5 +2265,142 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     fontWeight: '600',
+  },
+  socialMediaNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8,
+  },
+  socialMediaNoteText: {
+    fontSize: 12,
+    color: '#666',
+    flex: 1,
+    lineHeight: 16,
+  },
+  socialMediaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  socialMediaText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  editPendingBadge: {
+    backgroundColor: '#FF9800',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  editPendingText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#f8f9fa',
+  },
+  modalSelect: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalImagePicker: {
+    height: 150,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    backgroundColor: '#f8f9fa',
+  },
+  modalImagePickerInner: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalPreviewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  addProductContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  addButton: {
+    backgroundColor: '#800020',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  deleteProductButton: {
+    backgroundColor: '#f44336',
+    borderRadius: 6,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+  },
+  saveBtn: {
+    backgroundColor: '#800020',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  cancelBtn: {
+    backgroundColor: '#666',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flex: 1,
   },
 });

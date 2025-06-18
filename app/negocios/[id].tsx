@@ -17,7 +17,7 @@ import {
   Easing,
   LayoutAnimation
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../lib/supabase';
 import { BlurView } from 'expo-blur';
@@ -28,6 +28,9 @@ if (Platform.OS === 'android') {
     LayoutAnimation.configureNext = () => {};
   }
 }
+
+// Orden de días de la semana
+const DIAS_ORDEN = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
 export default function NegocioDetalle() {
   const { id } = useLocalSearchParams();
@@ -132,7 +135,8 @@ export default function NegocioDetalle() {
           productos: Array.isArray(businessData.productos) ? businessData.productos : [],
           calificacion: promedioCalculado,
           imagen_url: businessData.imagen_url || null,
-          horarios: businessData.horarios && typeof businessData.horarios === 'object' ? businessData.horarios : null
+          horarios: businessData.horarios && typeof businessData.horarios === 'object' ? businessData.horarios : null,
+          redes_sociales: businessData.redes_sociales && typeof businessData.redes_sociales === 'object' ? businessData.redes_sociales : null
         };
 
         setNegocio(cleanedBusiness);
@@ -193,6 +197,7 @@ export default function NegocioDetalle() {
         if (event === 'INITIAL_SESSION') {
           if (session?.user) {
             setUser(session.user);
+            await loadUserRating(session.user.id);
           } else {
             setUser(null);
             setUserRating(0);
@@ -200,6 +205,7 @@ export default function NegocioDetalle() {
           }
         } else if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user);
+          await loadUserRating(session.user.id);
         } else if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
           setUserRating(0);
@@ -256,9 +262,34 @@ export default function NegocioDetalle() {
     }
   };
 
+  const handleRedSocial = (red, usuario) => {
+    if (!usuario) return;
+    
+    let url = '';
+    switch (red) {
+      case 'facebook':
+        url = `https://facebook.com/${usuario}`;
+        break;
+      case 'instagram':
+        url = `https://instagram.com/${usuario}`;
+        break;
+      case 'x':
+        url = `https://x.com/${usuario}`;
+        break;
+      default:
+        return;
+    }
+    
+    Linking.openURL(url);
+  };
+
   const handleSetRating = async (rating) => {
     if (!user || !id) {
       Alert.alert('Error', 'Debe iniciar sesión para calificar');
+      return;
+    }
+    if (negocio && negocio.user_id === user.id) {
+      Alert.alert('No permitido', 'No puedes calificar tu propio negocio');
       return;
     }
     
@@ -402,6 +433,32 @@ export default function NegocioDetalle() {
     }
   };
 
+  // Función para formatear el horario
+  const formatearHorario = (horario) => {
+    if (!horario) return 'No especificado';
+    
+    if (horario.noTrabaja) {
+      return 'No se trabaja';
+    }
+    
+    const { apertura, cierre } = horario;
+    if (!apertura.hora || !apertura.minuto || !cierre.hora || !cierre.minuto) {
+      return 'No especificado';
+    }
+    
+    return `${apertura.hora}:${apertura.minuto.padStart(2, '0')} ${apertura.ampm} - ${cierre.hora}:${cierre.minuto.padStart(2, '0')} ${cierre.ampm}`;
+  };
+
+  // Función para obtener horarios ordenados
+  const obtenerHorariosOrdenados = (horarios) => {
+    if (!horarios || typeof horarios !== 'object') return [];
+    
+    return DIAS_ORDEN.map(dia => ({
+      dia,
+      horario: horarios[dia] || null
+    })).filter(item => item.horario !== null);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -438,6 +495,8 @@ export default function NegocioDetalle() {
   }
 
   const containerStyle = isDesktop ? [styles.container, styles.desktopContainer] : styles.container;
+
+  const esPropietario = user && negocio && negocio.user_id === user.id;
 
   return (
     <>
@@ -558,7 +617,7 @@ export default function NegocioDetalle() {
                       </Text>
                     )}
                     
-                    {user && (
+                    {user && !esPropietario && (
                       <Animated.View style={[styles.commentSection, { opacity: 1 }]}>
                         <TouchableOpacity
                           style={styles.commentToggle}
@@ -604,6 +663,11 @@ export default function NegocioDetalle() {
                           </TouchableOpacity>
                         </Animated.View>
                       </Animated.View>
+                    )}
+                    {user && esPropietario && (
+                      <Text style={{ color: '#FF7D1A', fontStyle: 'italic', marginTop: 10 }}>
+                        No puedes calificar ni comentar tu propio negocio.
+                      </Text>
                     )}
                   </View>
 
@@ -755,6 +819,60 @@ export default function NegocioDetalle() {
                     )}
                   </Animated.View>
 
+                  {/* Redes Sociales */}
+                  {negocio?.redes_sociales && Object.keys(negocio.redes_sociales).some(key => negocio.redes_sociales[key]) && (
+                    <Animated.View 
+                      style={[
+                        styles.section,
+                        { opacity: 1, transform: [{ translateY: 0 }] }
+                      ]}
+                    >
+                      <Text style={[styles.sectionTitle, isTablet && styles.sectionTitleTablet]}>
+                        Redes Sociales
+                      </Text>
+                      <View style={styles.socialMediaContainer}>
+                        {negocio.redes_sociales.facebook && (
+                          <TouchableOpacity 
+                            style={[styles.socialMediaButton, styles.facebookButton]}
+                            onPress={() => handleRedSocial('facebook', negocio.redes_sociales.facebook)}
+                            activeOpacity={0.8}
+                          >
+                            <FontAwesome5 name="facebook" size={20} color="#fff" />
+                            <Text style={styles.socialMediaButtonText}>
+                              @{negocio.redes_sociales.facebook}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        
+                        {negocio.redes_sociales.instagram && (
+                          <TouchableOpacity 
+                            style={[styles.socialMediaButton, styles.instagramButton]}
+                            onPress={() => handleRedSocial('instagram', negocio.redes_sociales.instagram)}
+                            activeOpacity={0.8}
+                          >
+                            <FontAwesome5 name="instagram" size={20} color="#fff" />
+                            <Text style={styles.socialMediaButtonText}>
+                              @{negocio.redes_sociales.instagram}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        
+                        {negocio.redes_sociales.x && (
+                          <TouchableOpacity 
+                            style={[styles.socialMediaButton, styles.xButton]}
+                            onPress={() => handleRedSocial('x', negocio.redes_sociales.x)}
+                            activeOpacity={0.8}
+                          >
+                            <FontAwesome5 name="twitter" size={20} color="#fff" />
+                            <Text style={styles.socialMediaButtonText}>
+                              @{negocio.redes_sociales.x}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </Animated.View>
+                  )}
+
                   {/* Info Cards */}
                   <Animated.View 
                     style={[
@@ -799,15 +917,13 @@ export default function NegocioDetalle() {
                         Horarios
                       </Text>
                       <View style={[styles.scheduleCard, isTablet && styles.scheduleCardTablet]}>
-                        {Object.keys(negocio.horarios).map((dia) => (
+                        {obtenerHorariosOrdenados(negocio.horarios).map(({ dia, horario }) => (
                           <View key={dia} style={styles.scheduleRow}>
                             <Text style={[styles.scheduleDay, isTablet && styles.scheduleDayTablet]}>
                               {dia.charAt(0).toUpperCase() + dia.slice(1)}
                             </Text>
                             <Text style={[styles.scheduleTime, isTablet && styles.scheduleTimeTablet]}>
-                              {negocio.horarios[dia].apertura.hora}:{negocio.horarios[dia].apertura.minuto} {negocio.horarios[dia].apertura.ampm}
-                              {' - '}
-                              {negocio.horarios[dia].cierre.hora}:{negocio.horarios[dia].cierre.minuto} {negocio.horarios[dia].cierre.ampm}
+                              {formatearHorario(horario)}
                             </Text>
                           </View>
                         ))}
@@ -1170,6 +1286,39 @@ const styles = StyleSheet.create({
   },
   actionButtonTextTablet: {
     fontSize: 16,
+  },
+
+  // Redes Sociales
+  socialMediaContainer: {
+    gap: 12,
+  },
+  socialMediaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  socialMediaButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  instagramButton: {
+    backgroundColor: '#E4405F',
+  },
+  xButton: {
+    backgroundColor: '#1DA1F2',
   },
   
   // Info Cards

@@ -54,6 +54,11 @@ const CATEGORIAS = [
   'Educación',
   'Ropa',
   'Supermercado',
+  'Agricultura',
+  'Ganadería',
+  'Decoración',
+  'Cuidado personal',
+  'Artesanías',
   'Otro'
 ];
 
@@ -606,6 +611,11 @@ const getCategoryIcon = (category) => {
     'Educación': 'school-outline',
     'Ropa': 'shirt-outline',
     'Supermercado': 'basket-outline',
+    'Agricultura': 'leaf-outline',
+    'Ganadería': 'earth-outline',
+    'Decoración': 'color-palette-outline',
+    'Cuidado personal': 'cut-outline',
+    'Artesanías': 'hand-left-outline',
     'Otro': 'apps-outline'
   };
 
@@ -624,6 +634,11 @@ const getCategoryColor = (category) => {
     'Educación': '#607D8B',
     'Ropa': '#795548',
     'Supermercado': '#009688',
+    'Agricultura': '#8BC34A',
+    'Ganadería': '#6D4C41',
+    'Decoración': '#E91E63',
+    'Cuidado personal': '#FF5722',
+    'Artesanías': '#9E9E9E',
     'Otro': '#757575'
   };
 

@@ -50,6 +50,9 @@ export default function AdminScreen() {
     categorias: {}
   });
 
+  // Agregar estado para ediciones pendientes
+  const [edicionesPendientes, setEdicionesPendientes] = useState([]);
+
   // Cargar negocios y calcular estadísticas
   const fetchNegocios = async () => {
     try {
@@ -63,6 +66,7 @@ export default function AdminScreen() {
       const negocios = data || [];
       const pendientes = negocios.filter(n => n.aprobado === false);
       const aprobados = negocios.filter(n => n.aprobado === true);
+      const conEdicionesPendientes = negocios.filter(n => n.edicion_pendiente === true);
       
       // Calcular estadísticas por categoría
       const categorias = {};
@@ -73,10 +77,12 @@ export default function AdminScreen() {
 
       setNegocios(negocios);
       setPendientes(pendientes);
+      setEdicionesPendientes(conEdicionesPendientes);
       setStats({
         total: negocios.length,
         aprobados: aprobados.length,
         pendientes: pendientes.length,
+        edicionesPendientes: conEdicionesPendientes.length,
         categorias
       });
 
@@ -262,6 +268,55 @@ export default function AdminScreen() {
     }
   };
 
+  // Función para aprobar edición
+  const aprobarEdicion = async (negocio) => {
+    try {
+      const { error } = await supabase
+        .from('negocios')
+        .update({
+          ...negocio.datos_edicion,
+          edicion_pendiente: false,
+          datos_edicion: null,
+          fecha_edicion: null
+        })
+        .eq('id', negocio.id);
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo aprobar la edición.');
+        return;
+      }
+
+      Alert.alert('Éxito', 'Edición aprobada y publicada correctamente.');
+      fetchNegocios();
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error inesperado.');
+    }
+  };
+
+  // Función para rechazar edición
+  const rechazarEdicion = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('negocios')
+        .update({
+          edicion_pendiente: false,
+          datos_edicion: null,
+          fecha_edicion: null
+        })
+        .eq('id', id);
+
+      if (error) {
+        Alert.alert('Error', 'No se pudo rechazar la edición.');
+        return;
+      }
+
+      Alert.alert('Éxito', 'Edición rechazada.');
+      fetchNegocios();
+    } catch (err) {
+      Alert.alert('Error', 'Ocurrió un error inesperado.');
+    }
+  };
+
   // Componente de estadísticas
   const StatsCard = ({ title, value, icon, color }) => (
     <View style={[styles.statsCard, isDesktop && styles.statsCardDesktop]}>
@@ -417,6 +472,59 @@ export default function AdminScreen() {
     </View>
   );
 
+  // Render de cada edicion pendiente
+  const renderEdicionPendiente = ({ item }) => (
+    <View style={[styles.card, styles.editCard, isDesktop && styles.cardDesktop]}>
+      <View style={styles.cardHeader}>
+        <View>
+          <Text style={styles.cardTitle}>{item.nombre}</Text>
+          <View style={styles.editBadge}>
+            <Ionicons name="create" size={12} color="#fff" />
+            <Text style={styles.editBadgeText}>Edición pendiente</Text>
+          </View>
+        </View>
+        <View style={styles.editDate}>
+          <Text style={styles.editDateText}>
+            {new Date(item.fecha_edicion).toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+      
+      <Text style={styles.cardDescription}>Datos actuales: {item.descripcion}</Text>
+      <Text style={styles.cardDescription}>Nuevos datos: {item.datos_edicion?.descripcion}</Text>
+      
+      <View style={styles.compareContainer}>
+        <View style={styles.compareSection}>
+          <Text style={styles.compareTitle}>Actual</Text>
+          <Text style={styles.compareText}>Tipo: {item.tipo}</Text>
+          <Text style={styles.compareText}>Teléfono: {item.telefono}</Text>
+          <Text style={styles.compareText}>Productos: {item.productos?.length || 0}</Text>
+        </View>
+        <View style={styles.compareSection}>
+          <Text style={styles.compareTitle}>Propuesto</Text>
+          <Text style={styles.compareText}>Tipo: {item.datos_edicion?.tipo}</Text>
+          <Text style={styles.compareText}>Teléfono: {item.datos_edicion?.telefono}</Text>
+          <Text style={styles.compareText}>Productos: {item.datos_edicion?.productos?.length || 0}</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.approveBtn} onPress={() => aprobarEdicion(item)}>
+          <Ionicons name="checkmark-outline" size={18} color="#fff" />
+          <Text style={styles.btnText}>Aprobar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.viewBtn} onPress={() => verDetalle(item)}>
+          <Ionicons name="eye-outline" size={18} color="#fff" />
+          <Text style={styles.btnText}>Ver detalle</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.deleteBtn} onPress={() => rechazarEdicion(item.id)}>
+          <Ionicons name="close-outline" size={18} color="#fff" />
+          <Text style={styles.btnText}>Rechazar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <DashboardHeader />
@@ -452,6 +560,20 @@ export default function AdminScreen() {
               Pendientes ({stats.pendientes})
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, tab === 'ediciones' && styles.tabActive, isDesktop && styles.tabDesktop]}
+            onPress={() => setTab('ediciones')}
+          >
+            <Ionicons 
+              name="create-outline" 
+              size={20} 
+              color={tab === 'ediciones' ? '#800020' : '#888'} 
+            />
+            <Text style={tab === 'ediciones' ? styles.tabTextActive : styles.tabText}>
+              Ediciones ({stats.edicionesPendientes || 0})
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Lista de negocios */}
@@ -471,7 +593,7 @@ export default function AdminScreen() {
                 </View>
               }
             />
-          ) : (
+          ) : tab === 'pendientes' ? (
             <FlatList
               data={pendientes}
               keyExtractor={(item) => item.id.toString()}
@@ -483,6 +605,21 @@ export default function AdminScreen() {
                 <View style={styles.emptyState}>
                   <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
                   <Text style={styles.emptyText}>¡Excelente! No hay solicitudes pendientes</Text>
+                </View>
+              }
+            />
+          ) : (
+            <FlatList
+              data={edicionesPendientes}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderEdicionPendiente}
+              contentContainerStyle={styles.list}
+              numColumns={isDesktop ? 2 : 1}
+              key={isDesktop ? 'desktop-edits' : 'mobile-edits'}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="create-outline" size={64} color="#4CAF50" />
+                  <Text style={styles.emptyText}>No hay ediciones pendientes</Text>
                 </View>
               }
             />
@@ -846,6 +983,9 @@ const styles = StyleSheet.create({
   pendingCard: {
     borderLeftColor: '#FF9800',
   },
+  editCard: {
+    borderLeftColor: '#FF9800',
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1165,5 +1305,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     flex: 1,
+  },
+
+  // Ediciones pendientes
+  editBadge: {
+    backgroundColor: '#FF9800',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  editBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  editDate: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  editDateText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  compareContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginVertical: 12,
+  },
+  compareSection: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 8,
+  },
+  compareTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#800020',
+    marginBottom: 4,
+  },
+  compareText: {
+    fontSize: 11,
+    color: '#666',
+    marginBottom: 2,
   },
 });
