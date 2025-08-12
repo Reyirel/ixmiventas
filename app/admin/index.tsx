@@ -17,6 +17,11 @@ const CATEGORIAS = [
   'Servicios',
   'Supermercado',
   'Entretenimiento',
+  'Agricultura',
+  'Ganadería',
+  'Decoración',
+  'Cuidado personal',
+  'Artesanías',
   'Otro'
 ];
 
@@ -58,7 +63,6 @@ export default function AdminScreen() {
     try {
       const { data, error } = await supabase.from('negocios').select('*');
       if (error) {
-        console.error('Error al obtener negocios:', error.message);
         Alert.alert('Error', 'No se pudieron cargar los negocios.');
         return;
       }
@@ -87,7 +91,6 @@ export default function AdminScreen() {
       });
 
     } catch (err) {
-      console.error('Error inesperado:', err);
       Alert.alert('Error', 'Ocurrió un error inesperado al cargar los negocios.');
     }
   };
@@ -141,10 +144,8 @@ export default function AdminScreen() {
   // Eliminar negocio
   const eliminar = async (id: number) => {
     try {
-      console.log('Entrando a eliminar con id:', id);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('No user');
         Alert.alert('Error', 'No estás autenticado');
         return;
       }
@@ -155,10 +156,7 @@ export default function AdminScreen() {
         .eq('user_id', user.id)
         .single();
 
-      console.log('Perfil obtenido:', perfil);
-
       if (!perfil || perfil.tipo_usuario !== 'admin') {
-        console.log('No es admin');
         Alert.alert('Error', 'No tienes permisos de administrador');
         return;
       }
@@ -166,24 +164,20 @@ export default function AdminScreen() {
       // En web, usamos modal propio
       setConfirmarEliminar({visible: true, id});
     } catch (error) {
-      console.log('Error general en eliminar:', error);
       Alert.alert('Error', 'Error al verificar permisos');
     }
   };
 
   const confirmarEliminarNegocio = async () => {
     if (!confirmarEliminar.id) return;
-    console.log('Intentando eliminar negocio con id:', confirmarEliminar.id);
     const { error } = await supabase
       .from('negocios')
       .delete()
       .eq('id', confirmarEliminar.id);
 
     if (error) {
-      console.log('Error al eliminar negocio:', error.message);
       Alert.alert('Error', 'No se pudo eliminar el negocio');
     } else {
-      console.log('Negocio eliminado correctamente');
       Alert.alert('Éxito', 'Negocio eliminado correctamente');
       fetchNegocios();
     }
@@ -346,12 +340,14 @@ export default function AdminScreen() {
               Gestiona negocios y solicitudes
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.logoutBtn}
-            onPress={() => router.push('/negocios')}
-          >
-            <Ionicons name="home-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity 
+              style={styles.logoutBtn}
+              onPress={() => router.push('/negocios')}
+            >
+              <Ionicons name="home-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Estadísticas */}

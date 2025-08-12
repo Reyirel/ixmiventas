@@ -695,8 +695,9 @@ export default function Negocios() {
       .eq('aprobado', true)
       .order('created_at', { ascending: false });
 
-    if (error) console.error('Error al cargar negocios:', error.message);
-    else {
+    // Eliminado: if (error) console.error('Error al cargar negocios:', error.message);
+    // Solo continuar si no hay error
+    if (!error) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
       const originalData = data || [];
@@ -908,32 +909,45 @@ export default function Negocios() {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                style={[styles.navButton, isMobile && styles.navButtonMobile]}
-                onPress={() => router.push('/')}
-              >
-                <Ionicons name="home-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
-                {!isMobile && <Text style={styles.navButtonText}>Inicio</Text>}
-              </TouchableOpacity>
-
               {!user ? (
-                <TouchableOpacity
-                  style={[styles.navButton, isMobile && styles.navButtonMobile]}
-                  onPress={() => router.push('/auth/login')}
-                >
-                  <Ionicons name="log-in-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
-                  {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                    onPress={() => router.push('/')}
+                  >
+                    <Ionicons name="home-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                    {!isMobile && <Text style={styles.navButtonText}>Inicio</Text>}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                    onPress={() => router.push('/auth/login')}
+                  >
+                    <Ionicons name="log-in-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                    {!isMobile && <Text style={styles.navButtonText}>Iniciar sesión</Text>}
+                  </TouchableOpacity>
+                </>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.navButton, isMobile && styles.navButtonMobile, { backgroundColor: COLORS.burgundy }]}>
-                    <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>
+                <>
+                  {/* Avatar del usuario - Primer elemento */}
+                  <View style={[styles.navButton, styles.userAvatar, isMobile && styles.navButtonMobile]}>
+                    <Text style={[styles.avatarText, isMobile && styles.avatarTextMobile]}>
                       {user.user_metadata?.nombre
                         ? user.user_metadata.nombre.split(' ')[0][0].toUpperCase()
                         : user.email[0].toUpperCase()}
                     </Text>
                   </View>
-                  {/* Botón Mi Negocio solo si es negocio */}
+
+                  {/* Botón Inicio - Tercer elemento */}
+                  <TouchableOpacity
+                    style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                    onPress={() => router.push('/')}
+                  >
+                    <Ionicons name="home-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
+                    {!isMobile && <Text style={styles.navButtonText}>Inicio</Text>}
+                  </TouchableOpacity>
+
+                  {/* Botón Mi Negocio - Solo si es negocio */}
                   {userProfile?.tipo_usuario === 'negocio' && (
                     <TouchableOpacity
                       style={[styles.navButton, isMobile && styles.navButtonMobile]}
@@ -943,7 +957,8 @@ export default function Negocios() {
                       {!isMobile && <Text style={styles.navButtonText}>Mi negocio</Text>}
                     </TouchableOpacity>
                   )}
-                  {/* Botón Dashboard solo si es admin */}
+
+                  {/* Botón Dashboard - Solo si es admin */}
                   {userProfile?.tipo_usuario === 'admin' && (
                     <TouchableOpacity
                       style={[styles.navButton, isMobile && styles.navButtonMobile]}
@@ -953,14 +968,19 @@ export default function Negocios() {
                       {!isMobile && <Text style={styles.navButtonText}>Dashboard</Text>}
                     </TouchableOpacity>
                   )}
+
+                  {/* Separador visual */}
+                  <View style={[styles.navSeparator, isMobile && styles.navSeparatorMobile]} />
+
+                  {/* Botón Salir - Último elemento */}
                   <TouchableOpacity
-                    style={[styles.navButton, isMobile && styles.navButtonMobile]}
+                    style={[styles.navButton, styles.logoutButton, isMobile && styles.navButtonMobile]}
                     onPress={handleLogout}
                   >
                     <Ionicons name="log-out-outline" size={isMobile ? 16 : 18} color={COLORS.burgundy} />
                     {!isMobile && <Text style={styles.navButtonText}>Salir</Text>}
                   </TouchableOpacity>
-                </View>
+                </>
               )}
             </View>
           </View>
@@ -1641,5 +1661,37 @@ const styles = StyleSheet.create({
   menuButton: {
     backgroundColor: 'rgba(128, 0, 32, 0.08)',
     marginRight: 6,
+  },
+  userAvatar: {
+    backgroundColor: COLORS.burgundy,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 0,
+  },
+  avatarText: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  avatarTextMobile: {
+    fontSize: 14,
+  },
+  navSeparator: {
+    width: 1,
+    height: 24,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 8,
+  },
+  navSeparatorMobile: {
+    height: 20,
+    marginHorizontal: 4,
+  },
+  logoutButton: {
+    backgroundColor: 'rgba(220, 53, 69, 0.08)',
+    borderColor: 'rgba(220, 53, 69, 0.2)',
+    borderWidth: 1,
   },
 });

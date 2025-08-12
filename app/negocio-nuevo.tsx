@@ -101,24 +101,11 @@ export default function NegocioPage() {
 
     // Verificar usuario y cargar negocios
     const getUser = async () => {
-      console.log('🔐 Verificando usuario...');
-      
       const { data } = await supabase.auth.getUser();
-      
-      console.log('👤 Datos de usuario:', {
-        user: data.user ? {
-          id: data.user.id,
-          email: data.user.email,
-          role: data.user.role
-        } : null
-      });
-      
       if (!data.user) {
-        console.log('❌ Usuario no autenticado, redirigiendo...');
         Alert.alert('Debes iniciar sesión');
         router.replace('/auth/login');
       } else {
-        console.log('✅ Usuario autenticado:', data.user.id);
         setUserId(data.user.id);
         await fetchMisNegocios(data.user.id);
       }
@@ -135,14 +122,11 @@ export default function NegocioPage() {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error al cargar negocios:', error);
-        return;
-      }
+      if (error) return;
 
       setMisNegocios(data || []);
     } catch (error) {
-      console.error('Error inesperado:', error);
+      // Eliminado: console.error('Error inesperado:', error);
     }
   };
 
@@ -257,8 +241,6 @@ export default function NegocioPage() {
   };
 
   const handleSubmit = async () => {
-    console.log('🚀 Iniciando envío de negocio...');
-    
     if (!nombre || !userId || !descripcion || !ubicacion || !telefono || !tipoNegocio) {
       Alert.alert('Faltan datos obligatorios');
       return;
@@ -282,18 +264,14 @@ export default function NegocioPage() {
     try {
       let urlImagen = '';
       if (imagenLocal) {
-        console.log('📸 Procesando imagen...');
         const url = await subirImagen();
         if (!url) {
-          console.log('❌ No se pudo subir la imagen');
           setLoading(false);
           return;
         }
         urlImagen = url;
-        console.log('✅ Imagen procesada:', urlImagen);
       }
 
-      console.log('💾 Guardando negocio...');
       const { error } = await supabase.from('negocios').insert({
         nombre,
         descripcion,
@@ -309,20 +287,16 @@ export default function NegocioPage() {
       });
 
       if (error) {
-        console.error('❌ Error guardando:', error);
         Alert.alert('Error al guardar', error.message);
       } else {
-        console.log('✅ Negocio guardado exitosamente');
         Alert.alert('Negocio enviado', 'Esperando aprobación del administrador');
         limpiarFormulario();
         await fetchMisNegocios(userId!);
         setTab('mis-negocios');
       }
     } catch (error) {
-      console.error('💥 Error inesperado:', error);
       Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
     } finally {
-      console.log('🏁 Finalizando proceso...');
       setLoading(false);
     }
   };
@@ -336,13 +310,8 @@ export default function NegocioPage() {
   const [negocioToDelete, setNegocioToDelete] = useState(null);
 
   const eliminarNegocio = async (id: number) => {
-    console.log('🗑️ Iniciando eliminación de negocio...');
-    console.log('🔍 ID del negocio a eliminar:', id);
-    console.log('👤 Usuario actual ID:', userId);
-    
     // Verificar que el negocio existe y pertenece al usuario
     const negocioAEliminar = misNegocios.find(negocio => negocio.id === id);
-    console.log('📄 Negocio encontrado:', negocioAEliminar);
     
     // Para web, usar modal personalizado
     if (Platform.OS === 'web') {
@@ -367,18 +336,11 @@ export default function NegocioPage() {
   };
 
   const ejecutarEliminacion = async (id: number) => {
-    console.log('🚀 Ejecutando eliminación...');
-    
     try {
       // Verificar el estado de autenticación
       const { data: authData, error: authError } = await supabase.auth.getUser();
-      console.log('🔐 Estado de autenticación:', { 
-        user: authData.user?.id, 
-        error: authError 
-      });
 
       if (authError || !authData.user) {
-        console.error('❌ Usuario no autenticado');
         if (Platform.OS === 'web') {
           alert('Sesión expirada. Inicia sesión nuevamente.');
         } else {
@@ -388,8 +350,6 @@ export default function NegocioPage() {
       }
       
       // Verificar los permisos de la tabla
-      console.log('🔐 Verificando permisos de eliminación...');
-      
       const { data: checkData, error: checkError } = await supabase
         .from('negocios')
         .select('*')
@@ -397,10 +357,7 @@ export default function NegocioPage() {
         .eq('user_id', userId)
         .single();
       
-      console.log('📊 Resultado de verificación:', { checkData, checkError });
-      
       if (checkError) {
-        console.error('❌ Error al verificar el negocio:', checkError);
         const errorMsg = `No se pudo verificar el negocio: ${checkError.message}`;
         if (Platform.OS === 'web') {
           alert(errorMsg);
@@ -411,7 +368,6 @@ export default function NegocioPage() {
       }
       
       if (!checkData) {
-        console.error('❌ El negocio no existe o no te pertenece');
         const errorMsg = 'El negocio no existe o no tienes permisos para eliminarlo';
         if (Platform.OS === 'web') {
           alert(errorMsg);
@@ -421,17 +377,13 @@ export default function NegocioPage() {
         return;
       }
       
-      console.log('✅ Negocio verificado, procediendo con la eliminación...');
-      
       // PASO 1: Eliminar todas las calificaciones asociadas
-      console.log('🗑️ Eliminando calificaciones asociadas...');
       const { error: calificacionesError } = await supabase
         .from('calificaciones')
         .delete()
         .eq('negocio_id', id);
     
       if (calificacionesError) {
-        console.error('❌ Error eliminando calificaciones:', calificacionesError);
         const errorMsg = `No se pudieron eliminar las calificaciones: ${calificacionesError.message}`;
         if (Platform.OS === 'web') {
           alert(errorMsg);
@@ -441,10 +393,7 @@ export default function NegocioPage() {
         return;
       }
     
-      console.log('✅ Calificaciones eliminadas exitosamente');
-    
       // PASO 2: Ahora eliminar el negocio
-      console.log('🗑️ Eliminando negocio...');
       const { data, error, count } = await supabase
         .from('negocios')
         .delete({ count: 'exact' })
@@ -452,21 +401,7 @@ export default function NegocioPage() {
         .eq('user_id', userId)
         .select();
     
-      console.log('📤 Resultado completo de eliminación:', { 
-        data, 
-        error, 
-        count,
-        eliminatedRecords: data?.length || 0
-      });
-    
       if (error) {
-        console.error('❌ Error de Supabase al eliminar:', error);
-        console.error('📋 Detalles del error:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
         const errorMsg = `No se pudo eliminar el negocio: ${error.message}`;
         if (Platform.OS === 'web') {
           alert(errorMsg);
@@ -474,7 +409,6 @@ export default function NegocioPage() {
           Alert.alert('Error', errorMsg);
         }
       } else if (count === 0) {
-        console.error('⚠️ No se eliminó ningún registro');
         const warningMsg = 'No se eliminó ningún registro. Verifica los permisos.';
         if (Platform.OS === 'web') {
           alert(warningMsg);
@@ -482,10 +416,7 @@ export default function NegocioPage() {
           Alert.alert('Advertencia', warningMsg);
         }
       } else {
-        console.log(`✅ ${count} negocio(s) eliminado(s) exitosamente`);
-        
         // Actualizar inmediatamente la lista local
-        console.log('🔄 Actualizando lista local inmediatamente...');
         setMisNegocios(prevNegocios => prevNegocios.filter(negocio => negocio.id !== id));
         
         // Mostrar mensaje de éxito
@@ -493,25 +424,20 @@ export default function NegocioPage() {
         if (Platform.OS === 'web') {
           alert(successMsg);
           // Recargar desde el servidor para confirmar
-          console.log('🔄 Recargando desde servidor...');
           await fetchMisNegocios(userId!);
-          console.log('✅ Lista actualizada desde servidor');
         } else {
           Alert.alert('Éxito', successMsg, [
             {
               text: 'OK',
               onPress: async () => {
                 // Recargar desde el servidor para confirmar
-                console.log('🔄 Recargando desde servidor...');
                 await fetchMisNegocios(userId!);
-                console.log('✅ Lista actualizada desde servidor');
               }
             }
           ]);
         }
       }
     } catch (error) {
-      console.error('💥 Error inesperado durante eliminación:', error);
       const errorMsg = `Ocurrió un error inesperado: ${error.message}`;
       if (Platform.OS === 'web') {
         alert(errorMsg);
@@ -542,12 +468,14 @@ export default function NegocioPage() {
               Gestiona tus emprendimientos locales
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.homeBtn}
-            onPress={() => router.push('/negocios')}
-          >
-            <Ionicons name="home-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity 
+              style={styles.homeBtn}
+              onPress={() => router.push('/negocios')}
+            >
+              <Ionicons name="home-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </LinearGradient>

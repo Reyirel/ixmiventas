@@ -131,57 +131,130 @@ export default function Register() {
       return;
     }
 
-    // Activa el loader
     setIsLoading(true);
+    console.log('🚀 Iniciando proceso de registro...');
+    console.log('📧 Email:', email);
+    console.log('👤 Tipo de usuario:', userType);
 
     try {
+      // Registro con confirmación por email ACTIVA
+      console.log('📤 Enviando solicitud de registro a Supabase...');
+      
+      // OPCIÓN 1: Registro SIN metadata para evitar problemas con triggers
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
+        password
+        // Removemos options.data temporalmente para evitar conflictos
       });
 
-      if (error) throw error;
+      console.log('📨 Respuesta de Supabase - Data:', data);
+      console.log('❌ Respuesta de Supabase - Error:', error);
 
-      if (data && data.user) {
-        const { error: profileError } = await supabase
-          .from('perfiles')
-          .insert([
-            { 
-              user_id: data.user.id, 
-              email: email,
-              tipo_usuario: userType,
-              created_at: new Date().toISOString()
-            }
-          ]);
+      if (error) {
+        console.error('🔥 Error detallado de Supabase:', {
+          message: error.message,
+          status: error.status,
+          details: error
+        });
         
-        if (profileError) {
-          console.error('Error al insertar perfil:', profileError);
-          // Considera manejar específicamente este error para mostrar un mensaje adecuado
+        // Manejar errores específicos
+        if (error.message.includes('User already registered')) {
+          throw new Error('Este email ya está registrado');
+        } else if (error.message.includes('Invalid email')) {
+          throw new Error('Email inválido');
+        } else if (error.message.includes('Password')) {
+          throw new Error('La contraseña debe tener al menos 6 caracteres');
+        } else if (error.message.includes('Email rate limit exceeded')) {
+          throw new Error('Demasiados intentos. Intenta más tarde');
+        } else if (error.message.includes('Database error saving new user')) {
+          console.log('⚠️ Error de trigger en base de datos');
+          throw new Error('Error interno del servidor. Intenta más tarde o contacta al administrador');
+        } else {
+          throw new Error(`Error: ${error.message}`);
         }
       }
-      
-      // Mostrar notificación de éxito
-      setNotification({
-        show: true,
-        type: 'success',
-        message: `¡Registro exitoso! Te hemos enviado un correo a ${email}`
+
+      // Verificar si el usuario fue creado
+      if (data && data.user) {
+        console.log('✅ Usuario creado exitosamente:', {
+          id: data.user.id,
+          email: data.user.email,
+          email_confirmed_at: data.user.email_confirmed_at
+        });
+
+        // CREAR PERFIL MANUALMENTE (sin importar si el email está confirmado o no)
+        console.log('👤 Creando perfil de usuario manualmente...');
+        
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('perfiles')
+            .insert([
+              { 
+                user_id: data.user.id, 
+                email: email,
+                tipo_usuario: userType,
+                created_at: new Date().toISOString()
+              }
+            ])
+            .select();
+        
+          if (profileError) {
+            console.error('❌ Error al insertar perfil:', profileError);
+            console.log('⚠️ El usuario se creó pero no se pudo crear el perfil');
+            // No lanzamos error aquí, el perfil se puede crear después
+          } else {
+            console.log('✅ Perfil insertado correctamente:', profileData);
+          }
+        } catch (profileCreateError) {
+          console.error('❌ Error catch al crear perfil:', profileCreateError);
+        }
+
+        // Verificar si necesita confirmación
+        if (!data.user.email_confirmed_at) {
+          console.log('📧 Email de confirmación enviado. Usuario debe confirmar email.');
+          
+          setNotification({
+            show: true,
+            type: 'success',
+            message: `¡Registro exitoso! Revisa tu email ${email} para confirmar tu cuenta`
+          });
+
+          showSuccessAnimation();
+          
+        } else {
+          console.log('✅ Email ya confirmado');
+          
+          setNotification({
+            show: true,
+            type: 'success',
+            message: `¡Registro exitoso! Cuenta creada para ${email}`
+          });
+          
+          setTimeout(() => {
+            router.push('/auth/login');
+          }, 3000);
+        }
+        
+      } else {
+        console.error('❌ No se recibieron datos del usuario');
+        throw new Error('Error inesperado durante el registro');
+      }
+        
+    } catch (error) {
+      console.error('🔥 Error completo en handleRegister:', {
+        message: error.message,
+        stack: error.stack,
+        error: error
       });
       
-      // Redirigir después de 3 segundos
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 3000);
-      
-    } catch (error) {
-      console.log('Error en registro:', error);
       setNotification({
         show: true,
         type: 'error',
         message: error.message || 'No se pudo completar el registro'
       });
     } finally {
-      // Desactiva el loader sin importar el resultado
       setIsLoading(false);
+      console.log('🏁 Proceso de registro finalizado');
     }
   };
 
@@ -393,9 +466,9 @@ export default function Register() {
               Te hemos enviado un correo de confirmación a{'\n'}
               <Text style={styles.emailText}>{email}</Text>
             </Text>
-            
+
             <Text style={styles.successSubMessage}>
-              Por favor, revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
+              Por favor, revisa tu bandeja de entrada (y spam) y haz clic en el enlace para activar tu cuenta antes de iniciar sesión.
             </Text>
             
             <TouchableOpacity 
